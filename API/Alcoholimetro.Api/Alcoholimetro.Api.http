@@ -1,0 +1,6 @@
+@Alcoholimetro.Api_HostAddress = http://localhost:5231
+
+GET {{Alcoholimetro.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

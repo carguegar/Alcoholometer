@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="Alcoholimetro.Api/Alcoholimetro.Api.csproj" />
+  <Project Path="Alcoholimetro.Application/Alcoholimetro.Application.csproj" />
+  <Project Path="Alcoholimetro.Domain/Alcoholimetro.Domain.csproj" />
+  <Project Path="Alcoholimetro.Infrastructure/Alcoholimetro.Infrastructure.csproj" />
+</Solution>
