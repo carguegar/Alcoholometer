@@ -1,4 +1,5 @@
 using Alcoholimetro.Application.DTOs;
+using Alcoholimetro.Domain.Entities;
 using Alcoholimetro.Domain.Repositories;
 
 namespace Alcoholimetro.Application.Queries;
@@ -12,7 +13,7 @@ public class GetAllUsersQueryHandler
         _userRepository = userRepository;
     }
 
-    public async Task<IEnumerable<UserResponseDto>> ExecuteAsync(GetAllUsersQuery query)
+    public async Task<IEnumerable<UserResponseDto>> ExecuteAsync()
     {
         var users = await _userRepository.GetAllAsync();
 
@@ -24,7 +25,9 @@ public class GetAllUsersQueryHandler
             Age: user.Age,
             WeightKg: user.WeightKg,
             HeightCm: user.HeightCm,
-            BiologicalSex: user.BiologicalSex
+            BiologicalSex: user.BiologicalSex,
+            IsNoviceDriver: user.IsNoviceDriver
+
         ));
     }
 }

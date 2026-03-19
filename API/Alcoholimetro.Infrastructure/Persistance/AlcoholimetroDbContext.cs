@@ -34,6 +34,7 @@ public class AlcoholimetroDbContext : DbContext
         {
             // ef should ignore age because it's a calculated property, not stored in the database
             entity.Ignore(u => u.Age);
+            entity.Ignore(u => u.IsNoviceDriver);
 
             // mail traduction to string for the database, and back to Email when reading from the database
             entity.Property(u => u.Email)

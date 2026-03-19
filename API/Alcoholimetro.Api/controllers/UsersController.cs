@@ -33,7 +33,7 @@ public class UsersController : ControllerBase
     [HttpGet]
     public async Task<IActionResult> GetAll()
     {
-        var users = await _getAllHandler.ExecuteAsync(new GetAllUsersQuery());
+        var users = await _getAllHandler.ExecuteAsync();
         return Ok(users); // 200 OK 
     }
 

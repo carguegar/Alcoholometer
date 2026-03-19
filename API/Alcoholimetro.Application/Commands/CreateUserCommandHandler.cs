@@ -32,7 +32,7 @@ public class CreateUserCommandHandler
             BirthDate = command.BirthDate,
             WeightKg = command.WeightKg,
             HeightCm = command.HeightCm,
-            BiologicalSex = command.BiologicalSex
+            BiologicalSex = command.BiologicalSex,
         };
 
         await _userRepository.AddAsync(user);

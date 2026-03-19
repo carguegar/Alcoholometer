@@ -1,71 +1,93 @@
+using System.Text;
+using Alcoholimetro.Application.Authentication;
 using Alcoholimetro.Application.Commands;
 using Alcoholimetro.Application.Queries;
 using Alcoholimetro.Domain.Repositories;
+using Alcoholimetro.Infrastructure.Authentication;
 using Alcoholimetro.Infrastructure.Persistence;
 using Alcoholimetro.Infrastructure.Repositories;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// supabase congig
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-builder.Services.AddDbContext<AlcoholimetroDbContext>(options =>
-    options.UseNpgsql(connectionString, npgsqlOptions => 
-    {
-        // Avoid EF core to group multiple inserts into a single batch, which can cause issues with Supabase's Pooler
-        npgsqlOptions.MaxBatchSize(1); 
-    }));
-
-//Inyección de Dependencias - Repositorios (Infraestructura)
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 
-// deppendency injections (Aplicación)
-//commands
 builder.Services.AddScoped<CreateUserCommandHandler>();
 builder.Services.AddScoped<UpdateUserCommandHandler>();
 builder.Services.AddScoped<DeleteUserCommandHandler>();
-builder.Services.AddScoped<RecordMeasurementCommandHandler>();
-
-// queries
 builder.Services.AddScoped<GetUserByIdQueryHandler>();
 builder.Services.AddScoped<GetAllUsersQueryHandler>();
+builder.Services.AddScoped<RecordMeasurementCommandHandler>();
 builder.Services.AddScoped<GetMeasurementsByUserIdQueryHandler>();
+builder.Services.AddScoped<LoginCommandHandler>();
 
-// controllers and swagger
+builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();//swagger documentation
+builder.Services.AddDbContext<AlcoholimetroDbContext>(options =>
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+//JWT config
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options => {
+        options.TokenValidationParameters = new TokenValidationParameters {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!))
+        };
+    });
+builder.Services.AddAuthorization();
+
+builder.Services.AddOpenApi(options =>
+{
+    options.AddDocumentTransformer((document, context, cancellationToken) =>
+    {
+        document.Components ??= new OpenApiComponents();
+        document.Components.SecuritySchemes ??= new Dictionary<string, IOpenApiSecurityScheme>();
+
+        document.Components.SecuritySchemes.Add("Bearer", new OpenApiSecurityScheme
+        {
+            Type = SecuritySchemeType.Http,
+            Scheme = "bearer",
+            BearerFormat = "JWT",
+            Description = "Introduce tu token JWT aquí."
+        });
+
+        document.Security = [
+            new OpenApiSecurityRequirement
+            {
+                { new OpenApiSecuritySchemeReference("Bearer"), [] }
+            }
+        ];
+
+        document.SetReferenceHostDocument();
+        return Task.CompletedTask;
+    });
+});
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-    app.MapOpenApi();
+    app.MapOpenApi(); 
+    
+    app.UseSwaggerUI(options => 
+    {
+        options.SwaggerEndpoint("/openapi/v1.json", "API v1");
+    });
 }
 
 app.UseHttpsRedirection();
 
-app.MapControllers();
+app.UseAuthentication();
+app.UseAuthorization();
 
-// data seeding
-using (var scope = app.Services.CreateScope())
-{
-    var services = scope.ServiceProvider;
-    try
-    {
-        // Pedimos el DbContext
-        var context = services.GetRequiredService<AlcoholimetroDbContext>();
-        
-        // Ejecutamos la semilla
-        await DataSeeder.SeedAsync(context);
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"Error al ejecutar el data seeding: {ex.Message}");
-    }
-}
+app.MapControllers();
 
 app.Run();

@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore.Migrations;
 namespace Alcoholimetro.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class AddDriverLicenseDate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -24,7 +24,8 @@ namespace Alcoholimetro.Infrastructure.Migrations
                     BirthDate = table.Column<DateOnly>(type: "date", nullable: false),
                     WeightKg = table.Column<double>(type: "double precision", nullable: false),
                     HeightCm = table.Column<double>(type: "double precision", nullable: false),
-                    BiologicalSex = table.Column<string>(type: "text", nullable: false)
+                    BiologicalSex = table.Column<string>(type: "text", nullable: false),
+                    DriverLicenseDate = table.Column<DateOnly>(type: "date", nullable: true)
                 },
                 constraints: table =>
                 {

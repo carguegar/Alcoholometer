@@ -16,6 +16,7 @@ CREATE TABLE "Users" (
     "WeightKg" double precision NOT NULL,
     "HeightCm" double precision NOT NULL,
     "BiologicalSex" text NOT NULL,
+    "DriverLicenseDate" date,
     CONSTRAINT "PK_Users" PRIMARY KEY ("Id")
 );
 
@@ -33,7 +34,7 @@ CREATE TABLE "Measurements" (
 CREATE INDEX "IX_Measurements_UserId" ON "Measurements" ("UserId");
 
 INSERT INTO "__EFMigrationsHistory" ("MigrationId", "ProductVersion")
-VALUES ('20260305200047_InitialCreate', '10.0.3');
+VALUES ('20260311183842_AddDriverLicenseDate', '10.0.3');
 
 COMMIT;
 

@@ -7,5 +7,6 @@ public record UserResponseDto(
     int Age,
     double WeightKg,
     double HeightCm,
-    string BiologicalSex
+    string BiologicalSex,
+    bool IsNoviceDriver
 );

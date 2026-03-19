@@ -20,15 +20,16 @@ public class GetUserByIdQueryHandler
         if (user == null)
             throw new DomainException($"No se encontró el usuario con ID: {query.UserId}");
 
-        // map the User entity to UserResponseDto
+        // Mapeamos de Entidad a DTO (Ocultando el PasswordHash y juntando el nombre)
         return new UserResponseDto(
             Id: user.Id,
             FullName: $"{user.FirstName} {user.LastName} {user.SecondLastName}".Trim(),
-            Email: user.Email.Value, // string from the Email value object
-            Age: user.Age,
+            Email: user.Email.Value, // Sacamos el string del Value Object
+            Age: user.Age, // Usamos la propiedad calculada
             WeightKg: user.WeightKg,
             HeightCm: user.HeightCm,
-            BiologicalSex: user.BiologicalSex
+            BiologicalSex: user.BiologicalSex,
+            IsNoviceDriver: user.IsNoviceDriver
         );
     }
 }

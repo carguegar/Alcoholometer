@@ -16,17 +16,25 @@ public class User
     public double WeightKg { get; set; }
     public double HeightCm { get; set; }
     public string BiologicalSex { get; set; } = string.Empty; 
-
+    public DateOnly? DriverLicenseDate { get; set; }
     public List<Measurement> Measurements { get; set; } = new();
 
     public int Age 
-{
-    get 
     {
-        var today = DateOnly.FromDateTime(DateTime.UtcNow);
-        var age = today.Year - BirthDate.Year;
-        if (BirthDate > today.AddYears(-age)) age--;
-        return age;
+        get 
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            var age = today.Year - BirthDate.Year;
+            if (BirthDate > today.AddYears(-age)) age--;
+            return age;
+        }
     }
-}
+    public bool IsNoviceDriver 
+    {
+        get 
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            return DriverLicenseDate.HasValue && DriverLicenseDate.Value.AddYears(2) >= today;
+        }
+    }
 }

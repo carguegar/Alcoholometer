@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Alcoholimetro.Infrastructure.Migrations
 {
     [DbContext(typeof(AlcoholimetroDbContext))]
-    [Migration("20260305200047_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260311183842_AddDriverLicenseDate")]
+    partial class AddDriverLicenseDate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -58,6 +58,9 @@ namespace Alcoholimetro.Infrastructure.Migrations
                         .HasColumnType("text");
 
                     b.Property<DateOnly>("BirthDate")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly?>("DriverLicenseDate")
                         .HasColumnType("date");
 
                     b.Property<string>("Email")
