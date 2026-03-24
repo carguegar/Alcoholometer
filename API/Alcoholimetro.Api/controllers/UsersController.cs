@@ -2,11 +2,13 @@ using Alcoholimetro.Application.Commands;
 using Alcoholimetro.Application.Queries;
 using Alcoholimetro.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Alcoholimetro.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")] // api/users
+[Authorize]
 public class UsersController : ControllerBase
 {
     private readonly CreateUserCommandHandler _createHandler;
@@ -14,18 +16,21 @@ public class UsersController : ControllerBase
     private readonly DeleteUserCommandHandler _deleteHandler;
     private readonly GetUserByIdQueryHandler _getByIdHandler;
     private readonly GetAllUsersQueryHandler _getAllHandler;
+    private readonly LoginCommandHandler _loginHandler;
 
     public UsersController(
         CreateUserCommandHandler createHandler,
         UpdateUserCommandHandler updateHandler,
         DeleteUserCommandHandler deleteHandler,
         GetUserByIdQueryHandler getByIdHandler,
-        GetAllUsersQueryHandler getAllHandler)
+        GetAllUsersQueryHandler getAllHandler,
+        LoginCommandHandler loginHandler)
     {
         _createHandler = createHandler;
         _updateHandler = updateHandler;
         _deleteHandler = deleteHandler;
         _getByIdHandler = getByIdHandler;
+        _loginHandler = loginHandler;
         _getAllHandler = getAllHandler;
     }
 
@@ -54,6 +59,7 @@ public class UsersController : ControllerBase
 
     // POST: api/users
     [HttpPost]
+    [AllowAnonymous]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command)
     {
         try
@@ -96,5 +102,24 @@ public class UsersController : ControllerBase
     {
         await _deleteHandler.ExecuteAsync(new DeleteUserCommand(id));
         return NoContent(); // 204 No Content
+    }
+
+    [HttpPost("login")]
+    [AllowAnonymous]
+    public async Task<IActionResult> Login([FromBody] LoginCommand command)
+    {
+        try
+        {
+            // Le pasamos el email y password, y nos devuelve el Token JWT
+            var token = await _loginHandler.ExecuteAsync(command);
+            
+            // Devolvemos el token en un JSON
+            return Ok(new { Token = token }); 
+        }
+        catch (DomainException ex)
+        {
+            // Si la contraseña está mal, devolvemos un 401 Unauthorized
+            return Unauthorized(new { error = ex.Message }); 
+        }
     }
 }

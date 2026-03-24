@@ -2,11 +2,13 @@ using Alcoholimetro.Application.Commands;
 using Alcoholimetro.Application.Queries;
 using Alcoholimetro.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Authorization;
 
 namespace Alcoholimetro.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")] // api/measurements
+[Authorize]
 public class MeasurementsController : ControllerBase
 {
     private readonly RecordMeasurementCommandHandler _recordHandler;

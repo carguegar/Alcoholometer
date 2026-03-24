@@ -16,6 +16,8 @@ public class AlcoholimetroDbContext : DbContext
     // tablas de BBDD
     public DbSet<User> Users { get; set; }
     public DbSet<Measurement> Measurements { get; set; }
+    public DbSet<Group> Groups { get; set; } = null!;
+    public DbSet<UserGroup> UserGroups { get; set; } = null!;
 
     // tables configuration
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -64,5 +66,36 @@ public class AlcoholimetroDbContext : DbContext
                     )
                     .HasColumnName("Longitude");
             });
+
+        modelBuilder.Entity<Group>(entity =>
+        {
+            entity.Property(g => g.Name).IsRequired().HasMaxLength(100);
+            entity.Property(g => g.InvitationCode).IsRequired().HasMaxLength(20);
+            
+            entity.HasIndex(g => g.InvitationCode).IsUnique();
+
+            entity.OwnsOne(g => g.Configuration, config => 
+            {
+                config.Property(c => c.AlertThresholdLevel).HasColumnName("AlertThresholdLevel");
+                config.Property(c => c.IsMandatoryMeasurementActive).HasColumnName("IsMandatoryMeasurementActive");
+                config.Property(c => c.MandatoryStartTime).HasColumnName("MandatoryStartTime");
+                config.Property(c => c.MandatoryEndTime).HasColumnName("MandatoryEndTime");
+            });
+        });
+
+        modelBuilder.Entity<UserGroup>(entity =>
+        {
+            entity.HasKey(ug => new { ug.UserId, ug.GroupId });
+
+            entity.HasOne(ug => ug.User)
+                .WithMany(u => u.UserGroups)
+                .HasForeignKey(ug => ug.UserId)
+                .OnDelete(DeleteBehavior.Cascade); 
+
+            entity.HasOne(ug => ug.Group)
+                .WithMany(g => g.Members)
+                .HasForeignKey(ug => ug.GroupId)
+                .OnDelete(DeleteBehavior.Cascade);
+        });
     }
 }

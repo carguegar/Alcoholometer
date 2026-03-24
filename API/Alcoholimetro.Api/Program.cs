@@ -15,6 +15,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
+builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 
 builder.Services.AddScoped<CreateUserCommandHandler>();
 builder.Services.AddScoped<UpdateUserCommandHandler>();
@@ -27,9 +28,14 @@ builder.Services.AddScoped<LoginCommandHandler>();
 
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
-builder.Services.AddDbContext<AlcoholimetroDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+    ?? throw new InvalidOperationException("CRÍTICO: Falta la cadena de conexión 'DefaultConnection' en appsettings o User Secrets.");
 
+builder.Services.AddDbContext<AlcoholimetroDbContext>(options =>
+    options.UseNpgsql(connectionString));
+    
+var jwtSecret = builder.Configuration["Jwt:Secret"] 
+    ?? throw new InvalidOperationException("CRÍTICO: Falta el secreto 'Jwt:Secret' en la configuración o User Secrets.");
 //JWT config
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options => {
@@ -40,9 +46,10 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateIssuerSigningKey = true,
             ValidIssuer = builder.Configuration["Jwt:Issuer"],
             ValidAudience = builder.Configuration["Jwt:Audience"],
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Secret"]!))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
         };
     });
+    
 builder.Services.AddAuthorization();
 
 builder.Services.AddOpenApi(options =>
@@ -87,7 +94,6 @@ app.UseHttpsRedirection();
 
 app.UseAuthentication();
 app.UseAuthorization();
-
 app.MapControllers();
 
 app.Run();

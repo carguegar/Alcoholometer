@@ -18,6 +18,9 @@ public class User
     public string BiologicalSex { get; set; } = string.Empty; 
     public DateOnly? DriverLicenseDate { get; set; }
     public List<Measurement> Measurements { get; set; } = new();
+    //El token de Firebase/Apple para mandarle notificaciones Push al móvil
+    public string? DevicePushToken { get; set; }
+    public List<UserGroup> UserGroups { get; set; } = new();
 
     public int Age 
     {
