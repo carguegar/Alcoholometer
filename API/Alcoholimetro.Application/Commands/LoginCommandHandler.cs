@@ -1,10 +1,9 @@
 using Alcoholimetro.Application.Authentication;
-using Alcoholimetro.Domain.Exceptions;
 using Alcoholimetro.Domain.Repositories;
-using Alcoholimetro.Domain.ValueObjects;
 
 namespace Alcoholimetro.Application.Commands;
 
+public record LoginResponse(string AccessToken, string RefreshToken);
 public class LoginCommandHandler
 {
     private readonly IUserRepository _userRepository;
@@ -16,26 +15,25 @@ public class LoginCommandHandler
         _jwtProvider = jwtProvider;
     }
 
-    public async Task<string> ExecuteAsync(LoginCommand command)
+    public async Task<LoginResponse> ExecuteAsync(LoginCommand command)
     {
-        var email = new Email(command.EmailRaw);
-
-        var user = await _userRepository.GetByEmailAsync(email);
-        
+        var user = await _userRepository.GetByEmailAsync(command.EmailRaw);
         if (user == null)
-        {
-            throw new DomainException("Credenciales incorrectas.");
-        }
+            throw new Exception("Credenciales incorrectas.");
 
         bool isPasswordValid = BCrypt.Net.BCrypt.Verify(command.Password, user.PasswordHash);
-        
         if (!isPasswordValid)
-        {
-            throw new DomainException("Credenciales incorrectas.");
-        }
+            throw new Exception("Credenciales incorrectas.");
 
-        string token = _jwtProvider.Generate(user);
+        var accessToken = _jwtProvider.Generate(user); 
+        var rawRefreshToken = _jwtProvider.GenerateRefreshToken(); 
+        var hashedRefreshToken = _jwtProvider.HashRefreshToken(rawRefreshToken);
 
-        return token;
+        user.RefreshToken = hashedRefreshToken;
+        user.RefreshTokenExpiryTime = DateTime.UtcNow.AddDays(60); 
+
+        await _userRepository.UpdateAsync(user);
+
+        return new LoginResponse(accessToken, rawRefreshToken);
     }
 }

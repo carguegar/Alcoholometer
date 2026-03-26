@@ -105,21 +105,35 @@ public class UsersController : ControllerBase
     }
 
     [HttpPost("login")]
-    [AllowAnonymous]
+    [AllowAnonymous] 
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
         try
         {
-            // Le pasamos el email y password, y nos devuelve el Token JWT
-            var token = await _loginHandler.ExecuteAsync(command);
+            var response = await _loginHandler.ExecuteAsync(command);
             
-            // Devolvemos el token en un JSON
-            return Ok(new { Token = token }); 
+            return Ok(response); 
         }
-        catch (DomainException ex)
+        catch (Exception ex)
         {
-            // Si la contraseña está mal, devolvemos un 401 Unauthorized
             return Unauthorized(new { error = ex.Message }); 
+        }
+    }
+
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    public async Task<IActionResult> RefreshToken(
+        [FromBody] RefreshTokenCommand command, 
+        [FromServices] RefreshTokenCommandHandler handler)
+    {
+        try
+        {
+            var response = await handler.ExecuteAsync(command);
+            return Ok(response);
+        }
+        catch (Exception ex)
+        {
+            return Unauthorized(new { error = ex.Message });
         }
     }
 }

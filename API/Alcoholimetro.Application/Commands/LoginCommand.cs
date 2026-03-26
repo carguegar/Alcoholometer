@@ -1,3 +1,4 @@
+using Alcoholimetro.Domain.ValueObjects;
 namespace Alcoholimetro.Application.Commands;
 
-public record LoginCommand(string EmailRaw, string Password);
+public record LoginCommand(Email EmailRaw, string Password);

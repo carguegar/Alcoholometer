@@ -20,6 +20,8 @@ public class User
     public List<Measurement> Measurements { get; set; } = new();
     //El token de Firebase/Apple para mandarle notificaciones Push al móvil
     public string? DevicePushToken { get; set; }
+    public string? RefreshToken { get; set; }
+    public DateTime? RefreshTokenExpiryTime { get; set; }
     public List<UserGroup> UserGroups { get; set; } = new();
 
     public int Age 

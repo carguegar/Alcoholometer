@@ -25,6 +25,9 @@ builder.Services.AddScoped<GetAllUsersQueryHandler>();
 builder.Services.AddScoped<RecordMeasurementCommandHandler>();
 builder.Services.AddScoped<GetMeasurementsByUserIdQueryHandler>();
 builder.Services.AddScoped<LoginCommandHandler>();
+builder.Services.AddScoped<CreateGroupCommandHandler>();
+builder.Services.AddScoped<JoinGroupCommandHandler>();
+builder.Services.AddScoped<RefreshTokenCommandHandler>();
 
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
