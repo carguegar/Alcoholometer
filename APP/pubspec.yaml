@@ -1,0 +1,44 @@
+name: app
+description: "Alcoholímetro - App de seguridad vial"
+publish_to: 'none'
+version: 2.0.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Networking
+  dio: ^5.9.2
+
+  # State Management
+  flutter_riverpod: ^2.4.0
+
+  # Secure Storage
+  flutter_secure_storage: ^9.0.0
+
+  # Routing
+  go_router: ^17.2.2
+
+  # BLE (mobile only)
+  flutter_blue_plus: ^2.0.0
+
+  # Icons
+  cupertino_icons: ^1.0.8
+
+  # Google Fonts
+  google_fonts: ^6.2.1
+
+  # Intl for date formatting
+  intl: ^0.20.2
+  url_launcher: ^6.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
