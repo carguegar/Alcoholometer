@@ -255,13 +255,10 @@ Todos los endpoints están bajo el prefijo `/api`. Los marcados con 🔐 requier
 
 **Request Body:**
 ```json
-{
-  "userId": "3fa85f64-5717-4562-b3fc-2c963f66afa6",
-  "alcoholLevel": 0.35,
-  "latitude": 40.4168,
-  "longitude": -3.7038
-}
+{ "measurementLevel": 0.25, "lat": 40.4168, "lng": -3.7038 }
 ```
+
+> El `userId` se extrae del JWT (claim `sub` / `NameIdentifier`) y **no** se envía en el body. Una petición sin token válido devuelve `401 Unauthorized`.
 
 **Respuesta:** `201 Created`
 

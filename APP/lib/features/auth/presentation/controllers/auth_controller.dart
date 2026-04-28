@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:app/core/auth/auth_session.dart';
 import 'package:app/core/storage/secure_storage_service.dart';
 import 'package:app/features/auth/data/auth_repository.dart';
 import 'package:app/features/auth/domain/auth_status.dart';
@@ -9,7 +10,13 @@ final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<AuthStatus>>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
   final secureStorageService = ref.watch(secureStorageServiceProvider);
-  return AuthController(authRepository, secureStorageService, ref);
+  final controller = AuthController(authRepository, secureStorageService, ref);
+  // Reaccionar a forzados desde el interceptor (401 sin refresh válido)
+  // sin necesidad de que `api_client` importe este archivo.
+  ref.listen<int>(authSessionEventProvider, (prev, next) {
+    if (prev != next) controller.handleExternalSignOut();
+  });
+  return controller;
 });
 
 final userProfileProvider =
@@ -57,6 +64,15 @@ class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
     _ref.invalidate(userProfileProvider);
     _ref.invalidate(groupsControllerProvider);
     
+    state = const AsyncValue.data(AuthStatus.unauthenticated);
+  }
+
+  /// Invocado cuando el interceptor HTTP fuerza un sign-out por 401.
+  /// Los tokens ya han sido borrados por el callback; aquí solo
+  /// invalidamos providers dependientes y publicamos el nuevo estado.
+  void handleExternalSignOut() {
+    _ref.invalidate(userProfileProvider);
+    _ref.invalidate(groupsControllerProvider);
     state = const AsyncValue.data(AuthStatus.unauthenticated);
   }
 }

@@ -24,26 +24,19 @@ public class MeasurementsController : ControllerBase
     }
 
     // POST: api/measurements
-   [HttpPost]
-    [AllowAnonymous]
+    [HttpPost]
     public async Task<IActionResult> RecordMeasurement([FromBody] RecordMeasurementRequest request)
     {
-        Guid? userId = null;
-
-        // Check if the request came with a valid JWT Token
-        if (User.Identity?.IsAuthenticated == true)
+        var userIdString = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrWhiteSpace(userIdString) || !Guid.TryParse(userIdString, out Guid userId))
         {
-            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-            if (Guid.TryParse(userIdString, out Guid parsedId))
-            {
-                userId = parsedId;
-            }
+            return Unauthorized();
         }
 
         var command = new RecordMeasurementCommand(
-            request.MeasurementLevel, 
-            userId, 
-            request.Lat, 
+            request.MeasurementLevel,
+            userId,
+            request.Lat,
             request.Lng
         );
 
@@ -60,6 +53,10 @@ public class MeasurementsController : ControllerBase
         [FromQuery] int page = 1, 
         [FromQuery] int pageSize = 20)
     {
+        var callerId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (callerId is null) return Unauthorized();
+        if (!Guid.TryParse(callerId, out var callerGuid) || callerGuid != userId) return Forbid();
+
         var measurements = await _getByUserHandler.ExecuteAsync(
             new GetMeasurementsByUserIdQuery(userId, page, pageSize)
         );

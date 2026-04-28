@@ -17,6 +17,9 @@ public class AlcoholCalculatorService : IAlcoholCalculatorService
         double? weightKg = null, 
         string? biologicalSex = null)
     {
+        if (measurementLevel < 0)
+            throw new Exceptions.DomainException("La medición no puede ser negativa.");
+
         double legalLimit = isNoviceDriver ? NoviceLimit : GeneralLimit;
 
         if (measurementLevel <= legalLimit)
@@ -48,22 +51,23 @@ public class AlcoholCalculatorService : IAlcoholCalculatorService
         
         return new AlcoholCalculationResult(
             Color: TrafficLightColor.Yellow,
-            Message: $"Tasa ilegal. Darías positivo. Espera al menos {timeToGreen.Hours}h y {timeToGreen.Minutes}m. {precisionMode}",
+            Message: $"Tasa ilegal. Darías positivo. Espera al menos {(int)Math.Ceiling(timeToGreen.TotalHours)}h y {timeToGreen.Minutes}m. {precisionMode}",
             EstimatedTimeToGreen: timeToGreen
         );
     }
 
+    // TODO: migrar a enum BiologicalSex global
     private double CalculateEliminationRate(double? weightKg, string? sex)
     {
-        if (!weightKg.HasValue || string.IsNullOrEmpty(sex))
+        if (!weightKg.HasValue || string.IsNullOrWhiteSpace(sex))
         {
             return DefaultEliminationRate; 
         }
 
         double rate = DefaultEliminationRate;
 
-
-        if (sex.Equals("Femenino", StringComparison.OrdinalIgnoreCase) || sex.Equals("F", StringComparison.OrdinalIgnoreCase))
+        var s = sex?.Trim().ToLowerInvariant();
+        if (s == "female" || s == "f" || s == "femenino")
         {
             rate = 0.085; 
         }

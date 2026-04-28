@@ -14,7 +14,6 @@ import 'package:app/features/auth/presentation/screens/profile_screen.dart';
 final appRouterProvider = Provider<GoRouter>((ref) {
   final notifier = _AuthRouteNotifier(ref);
   final rootNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'root');
-  final shellNavigatorKey = GlobalKey<NavigatorState>(debugLabel: 'shell');
 
   return GoRouter(
     navigatorKey: rootNavigatorKey,

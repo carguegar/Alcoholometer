@@ -58,8 +58,8 @@ public class UsersController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command)
     {
-        await _createHandler.ExecuteAsync(command);
-        return CreatedAtAction(nameof(GetById), new { id = command.EmailRaw }, new { message = "Usuario creado con éxito." });
+        var createdId = await _createHandler.ExecuteAsync(command);
+        return CreatedAtAction(nameof(GetById), new { id = createdId }, new { id = createdId, message = "Usuario creado con éxito." });
     }
 
     // PUT: api/users/{id}
@@ -101,6 +101,9 @@ public class UsersController : ControllerBase
     [HttpPut("device-token")]
     public async Task<IActionResult> UpdateDeviceToken([FromBody] string deviceToken)
     {
+        if (string.IsNullOrWhiteSpace(deviceToken) || deviceToken.Length > 4096)
+            return BadRequest("Device token inválido.");
+
         var userIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdString, out Guid userId)) 
             return Unauthorized(new { error = "Token inválido." });
@@ -108,4 +111,15 @@ public class UsersController : ControllerBase
         var command = new UpdateDeviceTokenCommand(userId, deviceToken);
         await _updateDeviceTokenHandler.ExecuteAsync(command);
         return Ok(new { message = "Device token actualizado con éxito." });
-    }}
+    }
+
+    // GET: api/users/me
+    [HttpGet("me")]
+    public async Task<IActionResult> GetMe()
+    {
+        var idClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(idClaim, out var id)) return Unauthorized();
+        var user = await _getByIdHandler.ExecuteAsync(new GetUserByIdQuery(id));
+        return user is null ? NotFound() : Ok(user);
+    }
+}

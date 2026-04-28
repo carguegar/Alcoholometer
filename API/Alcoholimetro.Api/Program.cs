@@ -1,4 +1,5 @@
 using System.Text;
+using Alcoholimetro.Api.Middlewares;
 using Alcoholimetro.Application.Authentication;
 using Alcoholimetro.Application.Commands;
 using Alcoholimetro.Application.Queries;
@@ -44,15 +45,24 @@ builder.Services.AddScoped<PromoteToAdminCommandHandler>();
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
 
-// CORS: Permitir peticiones desde Flutter Web (navegadores)
+// CORS: configurado vía AllowedOrigins (vacío en dev = permisivo)
+var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFlutterWeb", policy =>
     {
-        policy
-            .AllowAnyOrigin()
-            .AllowAnyMethod()
-            .AllowAnyHeader();
+        if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+        else if (allowedOrigins.Contains("*"))
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+        }
+        else
+        {
+            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+        }
     });
 });
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
@@ -107,7 +117,7 @@ builder.Services.AddOpenApi(options =>
 });
 var app = builder.Build();
 
-app.UseMiddleware<Alcoholimetro.Api.Middlewares.GlobalExceptionMiddleware>();
+app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
@@ -118,6 +128,19 @@ if (app.Environment.IsDevelopment())
         options.SwaggerEndpoint("/openapi/v1.json", "API v1");
     });
 }
+
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHsts();
+}
+
+app.Use(async (ctx, next) =>
+{
+    ctx.Response.Headers["X-Content-Type-Options"] = "nosniff";
+    ctx.Response.Headers["X-Frame-Options"] = "DENY";
+    ctx.Response.Headers["Referrer-Policy"] = "no-referrer";
+    await next();
+});
 
 app.UseHttpsRedirection();
 

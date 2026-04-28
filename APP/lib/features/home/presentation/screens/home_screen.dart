@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:app/features/measurements/presentation/screens/measurement_screen.dart';
@@ -274,12 +275,79 @@ class _NavItem {
 class DashboardPage extends ConsumerWidget {
   const DashboardPage({super.key});
 
+  Future<void> _showEmergencyDialog(BuildContext context) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Emergencia'),
+        content: const Text('¿Llamar al 112?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Llamar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    if (!context.mounted) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    if (kIsWeb) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Llama al 112 desde tu teléfono.')),
+      );
+      return;
+    }
+
+    try {
+      final ok = await launchUrl(Uri.parse('tel:112'));
+      if (!ok) {
+        messenger.showSnackBar(
+          const SnackBar(content: Text('Llama al 112 desde tu teléfono.')),
+        );
+      }
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Llama al 112 desde tu teléfono.')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isWeb = kIsWeb;
+    final mediaWidth = MediaQuery.of(context).size.width;
+    final isMobile = mediaWidth < 768;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
+      appBar: isMobile
+          ? AppBar(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              automaticallyImplyLeading: false,
+              actions: [
+                IconButton(
+                  tooltip: 'Cerrar sesión',
+                  icon: const Icon(Icons.logout, color: AppColors.danger),
+                  onPressed: () async {
+                    await ref
+                        .read(authControllerProvider.notifier)
+                        .logout();
+                    if (context.mounted) {
+                      context.go('/login');
+                    }
+                  },
+                ),
+              ],
+            )
+          : null,
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -327,21 +395,40 @@ class DashboardPage extends ConsumerWidget {
                         mainAxisSpacing: 14,
                         childAspectRatio: 1.1,
                         children: [
-                          _DashboardCard(
-                            icon: Icons.speed_rounded,
-                            title: 'Medir',
-                            subtitle: isWeb ? 'Solo en móvil' : 'Tomar medición',
-                            color: AppColors.primary,
-                            onTap: isWeb
-                                ? null
-                                : () {
-                                    Navigator.of(context).push(
-                                      MaterialPageRoute(
-                                        builder: (_) => const MeasurementScreen(),
-                                      ),
-                                    );
-                                  },
-                          ),
+                          Builder(builder: (cardContext) {
+                            final card = _DashboardCard(
+                              icon: Icons.speed_rounded,
+                              title: 'Medir',
+                              subtitle:
+                                  isWeb ? 'Solo en móvil' : 'Tomar medición',
+                              color: AppColors.primary,
+                              onTap: isWeb
+                                  ? () {
+                                      ScaffoldMessenger.of(cardContext)
+                                          .showSnackBar(
+                                        const SnackBar(
+                                          content: Text(
+                                              'Medición disponible solo en móvil con BLE.'),
+                                        ),
+                                      );
+                                    }
+                                  : () {
+                                      Navigator.of(cardContext).push(
+                                        MaterialPageRoute(
+                                          builder: (_) =>
+                                              const MeasurementScreen(),
+                                        ),
+                                      );
+                                    },
+                            );
+                            return isWeb
+                                ? Tooltip(
+                                    message:
+                                        'Disponible solo en móvil con BLE',
+                                    child: card,
+                                  )
+                                : card;
+                          }),
                           _DashboardCard(
                             icon: Icons.group_rounded,
                             title: 'Grupos',
@@ -361,7 +448,7 @@ class DashboardPage extends ConsumerWidget {
                             title: 'Emergencia',
                             subtitle: 'Contactar ayuda',
                             color: AppColors.danger,
-                            onTap: null,
+                            onTap: () => _showEmergencyDialog(context),
                           ),
                         ],
                       );

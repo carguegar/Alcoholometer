@@ -133,9 +133,12 @@ class GroupsScreen extends ConsumerWidget {
 
                   return RefreshIndicator(
                     color: AppColors.primary,
-                    onRefresh: () => ref
-                        .read(groupsControllerProvider.notifier)
-                        .loadGroups(),
+                    onRefresh: () async {
+                      ref.invalidate(groupsControllerProvider);
+                      await ref
+                          .read(groupsControllerProvider.notifier)
+                          .loadGroups();
+                    },
                     child: ListView.builder(
                       padding: const EdgeInsets.symmetric(horizontal: 24),
                       itemCount: groups.length,
@@ -205,6 +208,7 @@ class GroupsScreen extends ConsumerWidget {
                       name: nameController.text.trim(),
                       description: descController.text.trim(),
                     );
+                ref.invalidate(groupsControllerProvider);
                 if (context.mounted) {
                   _showInvitationCodeDialog(
                       context, result['invitationCode'] ?? '');
@@ -316,6 +320,7 @@ class GroupsScreen extends ConsumerWidget {
                 await ref
                     .read(groupsControllerProvider.notifier)
                     .joinGroup(codeController.text.trim());
+                ref.invalidate(groupsControllerProvider);
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(

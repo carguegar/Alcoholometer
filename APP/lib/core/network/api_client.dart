@@ -1,15 +1,25 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../auth/auth_session.dart';
 import '../storage/secure_storage_service.dart';
 import 'auth_interceptor.dart';
 
+// Base URL de la API. Override en build/run con:
+//   flutter run --dart-define=API_BASE_URL=https://mi-api.com
+// Default apunta al loopback del emulador Android (10.0.2.2 = host).
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'https://unilobed-louie-pitifully.ngrok-free.dev',
+  defaultValue: 'http://localhost:5231',
 );
 
 final onUnauthorizedProvider = Provider<OnUnauthorized>((ref) {
-  return () async {};
+  return () async {
+    // Solo invocado tras un 401 con refresh fallido. Mantener este closure
+    // SIN referenciar `authControllerProvider` para no recrear el ciclo
+    // api_client → auth_controller → auth_repository → api_client.
+    await ref.read(secureStorageServiceProvider).clearTokens();
+    ref.read(authSessionEventProvider.notifier).state++;
+  };
 });
 
 final dioProvider = Provider<Dio>((ref) {

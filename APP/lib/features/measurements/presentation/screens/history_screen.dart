@@ -195,6 +195,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                         color: AppColors.primary,
                         onRefresh: () async {
                           ref.invalidate(historyProvider);
+                          await ref.read(historyProvider.future);
                         },
                         child: ListView.builder(
                           controller: _scrollController,
