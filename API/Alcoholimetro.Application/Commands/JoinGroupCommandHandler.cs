@@ -1,5 +1,6 @@
 using Alcoholimetro.Domain.Entities;
 using Alcoholimetro.Domain.Enums;
+using Alcoholimetro.Domain.Exceptions;
 using Alcoholimetro.Domain.Repositories;
 
 namespace Alcoholimetro.Application.Commands;
@@ -18,13 +19,13 @@ public class JoinGroupCommandHandler
         var group = await _groupRepository.GetByInvitationCodeAsync(command.InvitationCode);
         
         if (group == null)
-            throw new Exception("El código de invitación no existe."); //TODO: add domain exception
+            throw new NotFoundException("El código de invitación no existe.");
 
 
         bool isAlreadyMember = await _groupRepository.IsUserInGroupAsync(command.UserId, group.Id);
         
         if (isAlreadyMember)
-            throw new Exception("Ya eres miembro de este grupo."); //TODO: add domain exception
+            throw new ConflictException("Ya eres miembro de este grupo.");
 
         var userGroup = new UserGroup
         {

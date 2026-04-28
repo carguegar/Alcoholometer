@@ -10,5 +10,5 @@ public record CreateUserCommand(
     double WeightKg, 
     double HeightCm, 
     string BiologicalSex,
-    DateOnly DrivingLicenseIssueDate
+    DateOnly? DrivingLicenseIssueDate
 );

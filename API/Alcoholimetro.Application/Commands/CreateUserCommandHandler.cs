@@ -33,6 +33,7 @@ public class CreateUserCommandHandler
             WeightKg = command.WeightKg,
             HeightCm = command.HeightCm,
             BiologicalSex = command.BiologicalSex,
+            DriverLicenseDate = command.DrivingLicenseIssueDate,
         };
 
         await _userRepository.AddAsync(user);

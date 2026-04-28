@@ -8,5 +8,6 @@ public record UserResponseDto(
     double WeightKg,
     double HeightCm,
     string BiologicalSex,
-    bool IsNoviceDriver
+    bool IsNoviceDriver,
+    bool HasLicense
 );

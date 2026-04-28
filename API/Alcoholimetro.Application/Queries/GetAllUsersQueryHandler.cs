@@ -26,8 +26,8 @@ public class GetAllUsersQueryHandler
             WeightKg: user.WeightKg,
             HeightCm: user.HeightCm,
             BiologicalSex: user.BiologicalSex,
-            IsNoviceDriver: user.IsNoviceDriver
-
+            IsNoviceDriver: user.IsNoviceDriver,
+            HasLicense: user.DriverLicenseDate.HasValue
         ));
     }
 }

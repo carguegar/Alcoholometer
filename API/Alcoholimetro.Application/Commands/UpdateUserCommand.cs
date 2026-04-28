@@ -3,5 +3,6 @@ namespace Alcoholimetro.Application.Commands;
 public record UpdateUserCommand(
     Guid UserId, 
     double WeightKg, 
-    double HeightCm
+    double HeightCm,
+    bool? HasLicense = null
 );

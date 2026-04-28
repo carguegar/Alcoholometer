@@ -31,6 +31,13 @@ public class UserRepository : IUserRepository //implement the IUserRepository in
         return await _context.Users.AsNoTracking().ToListAsync();
     }
 
+    public async Task<Dictionary<Guid, User>> GetUsersByIdsAsync(IEnumerable<Guid> userIds)
+    {
+        return await _context.Users
+            .Where(u => userIds.Contains(u.Id))
+            .ToDictionaryAsync(u => u.Id, u => u);
+    }
+
     public async Task AddAsync(User user)
     {
         await _context.Users.AddAsync(user);

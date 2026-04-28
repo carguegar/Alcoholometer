@@ -3,4 +3,6 @@
   <Project Path="Alcoholimetro.Application/Alcoholimetro.Application.csproj" />
   <Project Path="Alcoholimetro.Domain/Alcoholimetro.Domain.csproj" />
   <Project Path="Alcoholimetro.Infrastructure/Alcoholimetro.Infrastructure.csproj" />
+  <Project Path="Alcoholimetro.Application.Tests/Alcoholimetro.Application.Tests.csproj" />
+  <Project Path="Alcoholimetro.Api.IntegrationTests/Alcoholimetro.Api.IntegrationTests.csproj" />
 </Solution>

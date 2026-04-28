@@ -14,7 +14,7 @@ public class GetMeasurementsByUserIdQueryHandler
 
     public async Task<IEnumerable<MeasurementResponseDto>> ExecuteAsync(GetMeasurementsByUserIdQuery query)
     {
-        var measurements = await _measurementRepository.GetByUserIdAsync(query.UserId);
+        var measurements = await _measurementRepository.GetByUserIdAsync(query.UserId, query.Page, query.PageSize);
 
         return measurements.Select(m => new MeasurementResponseDto(
             Id: m.Id,

@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using Alcoholimetro.Application.Authentication;
 using Alcoholimetro.Domain.Repositories;
+using Alcoholimetro.Domain.Exceptions;
 
 namespace Alcoholimetro.Application.Commands;
 
@@ -19,10 +20,14 @@ public class RefreshTokenCommandHandler
     {
         // extract user id from expired access token
         var principal = _jwtProvider.GetPrincipalFromExpiredToken(command.AccessToken);
+        
+        if (principal == null)
+            throw new DomainException("Access Token inválido.");
+
         var userIdString = principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
 
         if (!Guid.TryParse(userIdString, out Guid userId))
-            throw new Exception("Access Token inválido.");
+            throw new DomainException("Access Token inválido.");
 
         var user = await _userRepository.GetByIdAsync(userId);
 
@@ -32,7 +37,7 @@ public class RefreshTokenCommandHandler
             user.RefreshToken != hashedInputToken || 
             user.RefreshTokenExpiryTime <= DateTime.UtcNow)
         {
-            throw new Exception("Petición de Refresh Token inválida o expirada. Vuelva a iniciar sesión.");
+            throw new DomainException("Petición de Refresh Token inválida o expirada. Vuelva a iniciar sesión.");
         }
 
         var newAccessToken = _jwtProvider.Generate(user);

@@ -2,8 +2,11 @@ using System.Text;
 using Alcoholimetro.Application.Authentication;
 using Alcoholimetro.Application.Commands;
 using Alcoholimetro.Application.Queries;
+using Alcoholimetro.Application.Services;
 using Alcoholimetro.Domain.Repositories;
+using Alcoholimetro.Domain.Services;
 using Alcoholimetro.Infrastructure.Authentication;
+using Alcoholimetro.Infrastructure.Notifications;
 using Alcoholimetro.Infrastructure.Persistence;
 using Alcoholimetro.Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -16,6 +19,8 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
+builder.Services.AddScoped<IAlcoholCalculatorService, AlcoholCalculatorService>();
+builder.Services.AddScoped<IPushNotificationService, MockPushNotificationService>();
 
 builder.Services.AddScoped<CreateUserCommandHandler>();
 builder.Services.AddScoped<UpdateUserCommandHandler>();
@@ -28,9 +33,28 @@ builder.Services.AddScoped<LoginCommandHandler>();
 builder.Services.AddScoped<CreateGroupCommandHandler>();
 builder.Services.AddScoped<JoinGroupCommandHandler>();
 builder.Services.AddScoped<RefreshTokenCommandHandler>();
+builder.Services.AddScoped<GetGroupRankingQueryHandler>();
+builder.Services.AddScoped<GetUserGroupsQueryHandler>();
+builder.Services.AddScoped<GetGroupDetailsQueryHandler>();
+builder.Services.AddScoped<RemoveMemberCommandHandler>();
+builder.Services.AddScoped<UpdateDeviceTokenCommandHandler>();
+builder.Services.AddScoped<UpdateGroupConfigCommandHandler>();
+builder.Services.AddScoped<PromoteToAdminCommandHandler>();
 
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
+
+// CORS: Permitir peticiones desde Flutter Web (navegadores)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFlutterWeb", policy =>
+    {
+        policy
+            .AllowAnyOrigin()
+            .AllowAnyMethod()
+            .AllowAnyHeader();
+    });
+});
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
     ?? throw new InvalidOperationException("CRÍTICO: Falta la cadena de conexión 'DefaultConnection' en appsettings o User Secrets.");
 
@@ -83,6 +107,8 @@ builder.Services.AddOpenApi(options =>
 });
 var app = builder.Build();
 
+app.UseMiddleware<Alcoholimetro.Api.Middlewares.GlobalExceptionMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi(); 
@@ -94,6 +120,8 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
+app.UseCors("AllowFlutterWeb");
 
 app.UseAuthentication();
 app.UseAuthorization();

@@ -3,6 +3,7 @@ using Alcoholimetro.Application.Queries;
 using Alcoholimetro.Domain.Exceptions;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace Alcoholimetro.Api.Controllers;
 
@@ -23,25 +24,45 @@ public class MeasurementsController : ControllerBase
     }
 
     // POST: api/measurements
-    [HttpPost]
-    public async Task<IActionResult> Record([FromBody] RecordMeasurementCommand command)
+   [HttpPost]
+    [AllowAnonymous]
+    public async Task<IActionResult> RecordMeasurement([FromBody] RecordMeasurementRequest request)
     {
-        try
+        Guid? userId = null;
+
+        // Check if the request came with a valid JWT Token
+        if (User.Identity?.IsAuthenticated == true)
         {
-            await _recordHandler.ExecuteAsync(command);
-            return StatusCode(201, new { message = "Medición registrada con éxito." });
+            var userIdString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (Guid.TryParse(userIdString, out Guid parsedId))
+            {
+                userId = parsedId;
+            }
         }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message });
-        }
+
+        var command = new RecordMeasurementCommand(
+            request.MeasurementLevel, 
+            userId, 
+            request.Lat, 
+            request.Lng
+        );
+
+        var result = await _recordHandler.ExecuteAsync(command);
+        return StatusCode(201, result);
     }
+    // DTO for the incoming JSON
+    public record RecordMeasurementRequest(double MeasurementLevel, double Lat, double Lng);
 
     // GET: api/measurements/user/{userId}
     [HttpGet("user/{userId:guid}")]
-    public async Task<IActionResult> GetByUser(Guid userId)
+    public async Task<IActionResult> GetByUser(
+        [FromRoute] Guid userId, 
+        [FromQuery] int page = 1, 
+        [FromQuery] int pageSize = 20)
     {
-        var measurements = await _getByUserHandler.ExecuteAsync(new GetMeasurementsByUserIdQuery(userId));
+        var measurements = await _getByUserHandler.ExecuteAsync(
+            new GetMeasurementsByUserIdQuery(userId, page, pageSize)
+        );
         return Ok(measurements);
     }
 }

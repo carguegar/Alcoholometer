@@ -1,4 +1,6 @@
 using Alcoholimetro.Application.Authentication;
+using Alcoholimetro.Application.DTOs;
+using Alcoholimetro.Domain.Exceptions;
 using Alcoholimetro.Domain.Repositories;
 
 namespace Alcoholimetro.Application.Commands;
@@ -19,11 +21,12 @@ public class LoginCommandHandler
     {
         var user = await _userRepository.GetByEmailAsync(command.EmailRaw);
         if (user == null)
-            throw new Exception("Credenciales incorrectas.");
+            throw new DomainException("Credenciales incorrectas.");
 
         bool isPasswordValid = BCrypt.Net.BCrypt.Verify(command.Password, user.PasswordHash);
+        
         if (!isPasswordValid)
-            throw new Exception("Credenciales incorrectas.");
+            throw new DomainException("Credenciales incorrectas.");
 
         var accessToken = _jwtProvider.Generate(user); 
         var rawRefreshToken = _jwtProvider.GenerateRefreshToken(); 

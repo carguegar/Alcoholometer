@@ -1,8 +1,3 @@
 namespace Alcoholimetro.Application.Commands;
 
-public record RecordMeasurementCommand(
-    Guid UserId, 
-    double AlcoholLevel, 
-    double Latitude, 
-    double Longitude
-);
+public record RecordMeasurementCommand(double MeasurementLevel, Guid? UserId, double Lat, double Lng);

@@ -24,6 +24,18 @@ public class UpdateUserCommandHandler
         user.WeightKg = command.WeightKg;
         user.HeightCm = command.HeightCm;
 
+        if (command.HasLicense.HasValue)
+        {
+            if (command.HasLicense.Value && !user.DriverLicenseDate.HasValue)
+            {
+                user.DriverLicenseDate = DateOnly.FromDateTime(DateTime.UtcNow);
+            }
+            else if (!command.HasLicense.Value)
+            {
+                user.DriverLicenseDate = null;
+            }
+        }
+
         // save the changes
         await _userRepository.UpdateAsync(user);
     }

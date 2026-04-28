@@ -17,6 +17,7 @@ public class UsersController : ControllerBase
     private readonly GetUserByIdQueryHandler _getByIdHandler;
     private readonly GetAllUsersQueryHandler _getAllHandler;
     private readonly LoginCommandHandler _loginHandler;
+    private readonly UpdateDeviceTokenCommandHandler _updateDeviceTokenHandler;
 
     public UsersController(
         CreateUserCommandHandler createHandler,
@@ -24,14 +25,16 @@ public class UsersController : ControllerBase
         DeleteUserCommandHandler deleteHandler,
         GetUserByIdQueryHandler getByIdHandler,
         GetAllUsersQueryHandler getAllHandler,
-        LoginCommandHandler loginHandler)
+        LoginCommandHandler loginHandler,
+        UpdateDeviceTokenCommandHandler updateDeviceTokenHandler)
     {
         _createHandler = createHandler;
         _updateHandler = updateHandler;
         _deleteHandler = deleteHandler;
         _getByIdHandler = getByIdHandler;
-        _loginHandler = loginHandler;
         _getAllHandler = getAllHandler;
+        _loginHandler = loginHandler;
+        _updateDeviceTokenHandler = updateDeviceTokenHandler;
     }
 
     // GET: api/users
@@ -46,15 +49,8 @@ public class UsersController : ControllerBase
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> GetById(Guid id)
     {
-        try
-        {
-            var user = await _getByIdHandler.ExecuteAsync(new GetUserByIdQuery(id));
-            return Ok(user);
-        }
-        catch (DomainException ex)
-        {
-            return NotFound(new { error = ex.Message }); // 404 Not Found 
-        }
+        var user = await _getByIdHandler.ExecuteAsync(new GetUserByIdQuery(id));
+        return Ok(user);
     }
 
     // POST: api/users
@@ -62,38 +58,19 @@ public class UsersController : ControllerBase
     [AllowAnonymous]
     public async Task<IActionResult> Create([FromBody] CreateUserCommand command)
     {
-        try
-        {
-            await _createHandler.ExecuteAsync(command);
-            return StatusCode(201, new { message = "Usuario creado con éxito." }); // 201 Created
-        }
-        catch (DomainException ex)
-        {
-            return BadRequest(new { error = ex.Message }); // 400 Bad Request
-        }
-        catch (Exception ex)
-        {
-            return StatusCode(500, new { error = "Error interno del servidor.", details = ex.Message });
-        }
+        await _createHandler.ExecuteAsync(command);
+        return CreatedAtAction(nameof(GetById), new { id = command.EmailRaw }, new { message = "Usuario creado con éxito." });
     }
 
     // PUT: api/users/{id}
     [HttpPut("{id:guid}")]
     public async Task<IActionResult> Update(Guid id, [FromBody] UpdateUserCommand command)
     {
-        try
-        {
-            // sequirity check
-            if (id != command.UserId)
-                return BadRequest(new { error = "El ID de la ruta no coincide con el del cuerpo." });
+        if (id != command.UserId)
+            return BadRequest(new { error = "El ID de la ruta no coincide con el del cuerpo." });
 
-            await _updateHandler.ExecuteAsync(command);
-            return Ok(new { message = "Usuario actualizado con éxito." });
-        }
-        catch (DomainException ex)
-        {
-            return NotFound(new { error = ex.Message });
-        }
+        await _updateHandler.ExecuteAsync(command);
+        return Ok(new { message = "Usuario actualizado con éxito." });
     }
 
     // DELETE: api/users/{id}
@@ -108,16 +85,8 @@ public class UsersController : ControllerBase
     [AllowAnonymous] 
     public async Task<IActionResult> Login([FromBody] LoginCommand command)
     {
-        try
-        {
-            var response = await _loginHandler.ExecuteAsync(command);
-            
-            return Ok(response); 
-        }
-        catch (Exception ex)
-        {
-            return Unauthorized(new { error = ex.Message }); 
-        }
+        var response = await _loginHandler.ExecuteAsync(command);
+        return Ok(response);
     }
 
     [HttpPost("refresh")]
@@ -126,14 +95,17 @@ public class UsersController : ControllerBase
         [FromBody] RefreshTokenCommand command, 
         [FromServices] RefreshTokenCommandHandler handler)
     {
-        try
-        {
-            var response = await handler.ExecuteAsync(command);
-            return Ok(response);
-        }
-        catch (Exception ex)
-        {
-            return Unauthorized(new { error = ex.Message });
-        }
+        var response = await handler.ExecuteAsync(command);
+        return Ok(response);
     }
-}
+    [HttpPut("device-token")]
+    public async Task<IActionResult> UpdateDeviceToken([FromBody] string deviceToken)
+    {
+        var userIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
+        if (!Guid.TryParse(userIdString, out Guid userId)) 
+            return Unauthorized(new { error = "Token inválido." });
+
+        var command = new UpdateDeviceTokenCommand(userId, deviceToken);
+        await _updateDeviceTokenHandler.ExecuteAsync(command);
+        return Ok(new { message = "Device token actualizado con éxito." });
+    }}
