@@ -7,6 +7,13 @@ import 'auth_interceptor.dart';
 // Base URL de la API. Override en build/run con:
 //   flutter run --dart-define=API_BASE_URL=https://mi-api.com
 // Default apunta al loopback del emulador Android (10.0.2.2 = host).
+
+/// Base URL for the Alcoholimetro backend.
+///
+/// Override at build time with `--dart-define=API_BASE_URL=https://<your-host>`.
+/// Examples:
+///   flutter run -d chrome --dart-define=API_BASE_URL=https://abcd.ngrok-free.app
+///   flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
   defaultValue: 'http://localhost:5231',

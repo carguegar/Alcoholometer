@@ -28,7 +28,11 @@ public class GetGroupDetailsQueryHandler
             UserId: m.UserId,
             FirstName: m.User?.FirstName ?? "Unknown",
             LastName: m.User?.LastName ?? "User",
-            Role: m.Role.ToString()
+            Role: m.Role.ToString(),
+            BirthDate: m.User?.BirthDate,
+            HeightCm: m.User?.HeightCm ?? 0,
+            WeightKg: m.User?.WeightKg ?? 0,
+            BiologicalSex: m.User?.BiologicalSex ?? ""
         )).ToList();
 
         return new GroupDetailsDto(

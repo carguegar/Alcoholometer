@@ -135,6 +135,18 @@ class AuthRepository {
     }
   }
 
+  Future<void> updateDeviceToken(String token) async {
+    try {
+      await _dio.put<void>('/api/users/device-token', data: token);
+    } on DioException catch (e) {
+      final data = e.response?.data;
+      if (data is Map<String, dynamic> && data.containsKey('error')) {
+        throw Exception(data['error']);
+      }
+      throw Exception('Error al actualizar device token');
+    }
+  }
+
   Future<void> logout() async {
     await _secureStorageService.clearTokens();
   }

@@ -1,4 +1,5 @@
 using Alcoholimetro.Domain.Entities;
+using Alcoholimetro.Domain.Enums;
 using Alcoholimetro.Domain.Repositories;
 using Alcoholimetro.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
@@ -115,6 +116,17 @@ public class GroupRepository : IGroupRepository
         if (group != null)
         {
             _context.Groups.Remove(group);
+            await _context.SaveChangesAsync();
+        }
+    }
+
+    public async Task UpdateUserGroupRoleAsync(Guid userId, Guid groupId, GroupRole newRole)
+    {
+        var userGroup = await _context.UserGroups
+            .FirstOrDefaultAsync(ug => ug.UserId == userId && ug.GroupId == groupId);
+        if (userGroup != null)
+        {
+            userGroup.Role = newRole;
             await _context.SaveChangesAsync();
         }
     }

@@ -21,7 +21,9 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IMeasurementRepository, MeasurementRepository>();
 builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IAlcoholCalculatorService, AlcoholCalculatorService>();
-builder.Services.AddScoped<IPushNotificationService, MockPushNotificationService>();
+builder.Services.Configure<FirebaseSettings>(builder.Configuration.GetSection(FirebaseSettings.SectionName));
+builder.Services.AddHttpClient();
+builder.Services.AddScoped<IPushNotificationService, FcmHttpV1PushNotificationService>();
 
 builder.Services.AddScoped<CreateUserCommandHandler>();
 builder.Services.AddScoped<UpdateUserCommandHandler>();
@@ -45,23 +47,20 @@ builder.Services.AddScoped<PromoteToAdminCommandHandler>();
 builder.Services.AddScoped<IJwtProvider, JwtProvider>();
 builder.Services.AddControllers();
 
-// CORS: configurado vía AllowedOrigins (vacío en dev = permisivo)
-var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+// CORS: orígenes permitidos vienen de Cors:AllowedOrigins (vacío en Development = fallback permisivo SOLO-DEV)
+var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowFlutterWeb", policy =>
+    options.AddPolicy("DefaultCorsPolicy", policy =>
     {
         if (allowedOrigins.Length == 0 && builder.Environment.IsDevelopment())
         {
-            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-        }
-        else if (allowedOrigins.Contains("*"))
-        {
+            // DEV-ONLY fallback
             policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
         }
         else
         {
-            policy.WithOrigins(allowedOrigins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
+            policy.WithOrigins(allowedOrigins).AllowAnyHeader().AllowAnyMethod().AllowCredentials();
         }
     });
 });
@@ -144,7 +143,7 @@ app.Use(async (ctx, next) =>
 
 app.UseHttpsRedirection();
 
-app.UseCors("AllowFlutterWeb");
+app.UseCors("DefaultCorsPolicy");
 
 app.UseAuthentication();
 app.UseAuthorization();

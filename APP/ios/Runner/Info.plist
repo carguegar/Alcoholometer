@@ -45,5 +45,17 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Esta app usa Bluetooth para conectarse al alcoholímetro y recibir mediciones.</string>
+	<key>NSBluetoothPeripheralUsageDescription</key>
+	<string>Esta app se conecta al alcoholímetro vía Bluetooth.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Tu ubicación se asocia a cada medición y es necesaria en Android para descubrir dispositivos Bluetooth cercanos.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>bluetooth-central</string>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

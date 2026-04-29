@@ -26,15 +26,34 @@ class GroupMemberModel {
     required this.firstName,
     required this.lastName,
     required this.role,
+    this.birthDate,
+    this.heightCm = 0,
+    this.weightKg = 0,
+    this.biologicalSex = '',
   });
 
   final String userId;
   final String firstName;
   final String lastName;
   final String role;
+  final DateTime? birthDate;
+  final double heightCm;
+  final double weightKg;
+  final String biologicalSex;
 
   String get fullName => '$firstName $lastName';
   bool get isAdmin => role == 'Admin';
+
+  int? get age {
+    if (birthDate == null) return null;
+    final now = DateTime.now();
+    var a = now.year - birthDate!.year;
+    if (now.month < birthDate!.month ||
+        (now.month == birthDate!.month && now.day < birthDate!.day)) {
+      a--;
+    }
+    return a;
+  }
 
   factory GroupMemberModel.fromJson(Map<String, dynamic> json) {
     return GroupMemberModel(
@@ -42,6 +61,12 @@ class GroupMemberModel {
       firstName: json['firstName'] as String? ?? '',
       lastName: json['lastName'] as String? ?? '',
       role: json['role'] as String? ?? 'Member',
+      birthDate: json['birthDate'] != null
+          ? DateTime.tryParse(json['birthDate'] as String)
+          : null,
+      heightCm: (json['heightCm'] as num?)?.toDouble() ?? 0,
+      weightKg: (json['weightKg'] as num?)?.toDouble() ?? 0,
+      biologicalSex: json['biologicalSex'] as String? ?? '',
     );
   }
 }

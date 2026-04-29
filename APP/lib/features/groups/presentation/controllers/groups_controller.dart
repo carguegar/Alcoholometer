@@ -57,8 +57,9 @@ class GroupDetailsState {
   final GroupRankingModel ranking;
 }
 
-final groupDetailsControllerProvider = StateNotifierProvider.family<
-    GroupDetailsController, AsyncValue<GroupDetailsState>, String>(
+final groupDetailsControllerProvider =
+    StateNotifierProvider.autoDispose.family<
+        GroupDetailsController, AsyncValue<GroupDetailsState>, String>(
   (ref, groupId) {
     final repository = ref.watch(groupsRepositoryProvider);
     return GroupDetailsController(repository)..load(groupId);

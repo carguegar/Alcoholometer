@@ -473,15 +473,8 @@ class DashboardPage extends ConsumerWidget {
                     ),
                     child: Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                          child: const Icon(Icons.info_outline_rounded,
-                              color: AppColors.primaryLight, size: 28),
-                        ),
+                        const Icon(Icons.info_outline_rounded,
+                            color: AppColors.primaryLight, size: 28),
                         const SizedBox(width: 16),
                         Expanded(
                           child: Column(

@@ -63,6 +63,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
     // Clear user-specific data from providers
     _ref.invalidate(userProfileProvider);
     _ref.invalidate(groupsControllerProvider);
+    _ref.invalidate(groupDetailsControllerProvider);
     
     state = const AsyncValue.data(AuthStatus.unauthenticated);
   }
@@ -73,6 +74,7 @@ class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
   void handleExternalSignOut() {
     _ref.invalidate(userProfileProvider);
     _ref.invalidate(groupsControllerProvider);
+    _ref.invalidate(groupDetailsControllerProvider);
     state = const AsyncValue.data(AuthStatus.unauthenticated);
   }
 }

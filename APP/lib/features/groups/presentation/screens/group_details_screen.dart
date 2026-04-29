@@ -206,7 +206,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                                       fontSize: 11,
                                     ),
                                   ),
-                                  Text(
+                                  SelectableText(
                                     details.invitationCode,
                                     style: const TextStyle(
                                       color: AppColors.primaryLight,
@@ -214,8 +214,6 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                                       fontSize: 14,
                                       letterSpacing: 1,
                                     ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ],
                               ),
@@ -315,26 +313,62 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
         const SizedBox(height: 16),
 
         // Tab bar
+       
         Container(
           margin: const EdgeInsets.symmetric(horizontal: 24),
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
           ),
           child: TabBar(
             controller: _tabController,
+            // Hace que el indicador se calcule con el tamaño total del tab
+            indicatorSize: TabBarIndicatorSize.tab,
+            indicatorPadding: const EdgeInsets.all(2),
             indicator: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.2),
+              color: AppColors.primary,
               borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.4),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            labelColor: Colors.white,
+            unselectedLabelColor: AppColors.textSecondary,
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.w700,
+              fontSize: 14,
+            ),
+            unselectedLabelStyle: const TextStyle(
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
             ),
             dividerColor: Colors.transparent,
+
             tabs: const [
-              Tab(text: 'Miembros'),
-              Tab(text: 'Ranking'),
+              // Más padding horizontal (aire a los lados)
+              // Menos padding vertical (arriba/abajo)
+              Tab(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Text('Miembros'),
+                ),
+              ),
+              Tab(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  child: Text('Ranking'),
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(height: 8),
+
 
         // Tab views
         Expanded(
@@ -359,6 +393,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                           ).notifier,
                         )
                         .kickMember(widget.groupId, userId);
+                    ref.invalidate(groupsControllerProvider);
                   },
                   onPromote: (userId) async {
                     await ref
@@ -368,6 +403,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                           ).notifier,
                         )
                         .promoteToAdmin(widget.groupId, userId);
+                    ref.invalidate(groupsControllerProvider);
                   },
                 ),
                 _RankingsTab(
@@ -412,25 +448,20 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                       groupDetailsControllerProvider(widget.groupId).notifier,
                     )
                     .leaveGroup(widget.groupId);
-                if (context.mounted) {
-                  ref.read(groupsControllerProvider.notifier).loadGroups();
-                  context.go('/groups');
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Has abandonado el grupo'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(e.toString().replaceAll('Exception: ', '')),
-                      backgroundColor: AppColors.danger,
-                    ),
-                  );
-                }
+              } catch (_) {
+                // Even if the API response fails to parse, the removal may
+                // have succeeded server-side. Navigate away regardless.
+              }
+              if (context.mounted) {
+                context.go('/groups');
+                ref.invalidate(groupDetailsControllerProvider(widget.groupId));
+                ref.invalidate(groupsControllerProvider);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Has abandonado el grupo'),
+                    backgroundColor: AppColors.success,
+                  ),
+                );
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
@@ -531,7 +562,6 @@ class _MembersTab extends StatelessWidget {
         final member = members[index];
         return Container(
           margin: const EdgeInsets.only(bottom: 10),
-          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(14),
@@ -541,95 +571,116 @@ class _MembersTab extends StatelessWidget {
           ),
           child: Row(
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: member.isAdmin
-                      ? AppColors.accent.withValues(alpha: 0.2)
-                      : AppColors.info.withValues(alpha: 0.15),
-                ),
-                child: Center(
-                  child: Text(
-                    member.firstName.isNotEmpty
-                        ? member.firstName[0].toUpperCase()
-                        : '?',
-                    style: TextStyle(
-                      color: member.isAdmin ? AppColors.accent : AppColors.info,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 18,
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(14),
+                  onTap: () => _showMemberInfoDialog(context, member),
+                  child: Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 44,
+                          height: 44,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: member.isAdmin
+                                ? AppColors.accent.withValues(alpha: 0.2)
+                                : AppColors.info.withValues(alpha: 0.15),
+                          ),
+                          child: Center(
+                            child: Text(
+                              member.firstName.isNotEmpty
+                                  ? member.firstName[0].toUpperCase()
+                                  : '?',
+                              style: TextStyle(
+                                color: member.isAdmin
+                                    ? AppColors.accent
+                                    : AppColors.info,
+                                fontWeight: FontWeight.w700,
+                                fontSize: 18,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                member.fullName,
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                  fontWeight: FontWeight.w500,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                member.isAdmin ? 'Administrador' : 'Miembro',
+                                style: TextStyle(
+                                  color: member.isAdmin
+                                      ? AppColors.accent
+                                      : AppColors.textMuted,
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      member.fullName,
-                      style: const TextStyle(
-                        color: AppColors.textPrimary,
-                        fontWeight: FontWeight.w500,
-                        fontSize: 15,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      member.isAdmin ? 'Administrador' : 'Miembro',
-                      style: TextStyle(
-                        color: member.isAdmin
-                            ? AppColors.accent
-                            : AppColors.textMuted,
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
                 ),
               ),
               if (member.isAdmin)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AppColors.accent.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Icon(
-                    Icons.star_rounded,
-                    color: AppColors.accent,
-                    size: 16,
+                Padding(
+                  padding: const EdgeInsets.only(right: 12),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: AppColors.accent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: const Icon(
+                      Icons.star_rounded,
+                      color: AppColors.accent,
+                      size: 16,
+                    ),
                   ),
                 ),
               if (isCurrentUserAdmin && member.userId != currentUserId)
-                PopupMenuButton<String>(
-                  icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
-                  color: AppColors.surface,
-                  onSelected: (value) {
-                    if (value == 'kick') {
-                      onKick(member.userId);
-                    } else if (value == 'promote') {
-                      onPromote(member.userId);
-                    }
-                  },
-                  itemBuilder: (context) => [
-                    if (!member.isAdmin)
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: AppColors.textMuted),
+                    color: AppColors.surface,
+                    onSelected: (value) {
+                      if (value == 'kick') {
+                        onKick(member.userId);
+                      } else if (value == 'promote') {
+                        onPromote(member.userId);
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      if (!member.isAdmin)
+                        const PopupMenuItem(
+                          value: 'promote',
+                          child: Text('Ascender a admin'),
+                        ),
                       const PopupMenuItem(
-                        value: 'promote',
-                        child: Text('Ascender a admin'),
+                        value: 'kick',
+                        child: Text(
+                          'Expulsar miembro',
+                          style: TextStyle(color: AppColors.danger),
+                        ),
                       ),
-                    const PopupMenuItem(
-                      value: 'kick',
-                      child: Text(
-                        'Expulsar miembro',
-                        style: TextStyle(color: AppColors.danger),
-                      ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
             ],
           ),
@@ -637,6 +688,194 @@ class _MembersTab extends StatelessWidget {
       },
     );
   }
+
+  void _showMemberInfoDialog(BuildContext context, GroupMemberModel member) {
+    final infoItems = <_InfoRow>[];
+    if (member.age != null) {
+      infoItems.add(_InfoRow(Icons.cake_rounded, 'Edad', '${member.age} años'));
+    }
+    if (member.birthDate != null) {
+      final d = member.birthDate!;
+      infoItems.add(_InfoRow(
+        Icons.calendar_today_rounded,
+        'Cumpleaños',
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}',
+      ));
+    }
+    if (member.heightCm > 0) {
+      infoItems.add(_InfoRow(
+        Icons.height_rounded,
+        'Altura',
+        '${member.heightCm.toStringAsFixed(0)} cm',
+      ));
+    }
+    if (member.weightKg > 0) {
+      infoItems.add(_InfoRow(
+        Icons.monitor_weight_outlined,
+        'Peso',
+        '${member.weightKg.toStringAsFixed(1)} kg',
+      ));
+    }
+    if (member.biologicalSex.isNotEmpty) {
+      infoItems.add(_InfoRow(
+        Icons.person_outline_rounded,
+        'Sexo biológico',
+        member.biologicalSex,
+      ));
+    }
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => Dialog(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final availableWidth = constraints.maxWidth.isFinite
+                ? constraints.maxWidth
+                : 400.0;
+            final dialogWidth = availableWidth > 400 ? 400.0 : availableWidth;
+            final contentPadding = dialogWidth < 360 ? 20.0 : 24.0;
+
+            return ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: dialogWidth),
+              child: SizedBox(
+                width: double.infinity,
+                child: Padding(
+                  padding: EdgeInsets.all(contentPadding),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: member.isAdmin
+                              ? AppColors.accent.withValues(alpha: 0.2)
+                              : AppColors.info.withValues(alpha: 0.15),
+                        ),
+                        child: Center(
+                          child: Text(
+                            member.firstName.isNotEmpty
+                                ? member.firstName[0].toUpperCase()
+                                : '?',
+                            style: TextStyle(
+                              color: member.isAdmin
+                                  ? AppColors.accent
+                                  : AppColors.info,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 28,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        member.fullName,
+                        style: const TextStyle(
+                          color: AppColors.textPrimary,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 18,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: member.isAdmin
+                              ? AppColors.accent.withValues(alpha: 0.15)
+                              : AppColors.info.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          member.isAdmin ? 'Admin' : 'Miembro',
+                          style: TextStyle(
+                            color: member.isAdmin
+                                ? AppColors.accent
+                                : AppColors.info,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      if (infoItems.isNotEmpty) ...[
+                        const SizedBox(height: 20),
+                        Divider(
+                          color: AppColors.surfaceLight.withValues(alpha: 0.4),
+                          height: 1,
+                        ),
+                        const SizedBox(height: 16),
+                        ...infoItems.map(
+                          (item) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  item.icon,
+                                  size: 20,
+                                  color: AppColors.textMuted,
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  item.label,
+                                  style: const TextStyle(
+                                    color: AppColors.textMuted,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  item.value,
+                                  style: const TextStyle(
+                                    color: AppColors.textPrimary,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      Divider(
+                        color: AppColors.surfaceLight.withValues(alpha: 0.4),
+                        height: 1,
+                      ),
+                      const SizedBox(height: 12),
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: TextButton(
+                          onPressed: () => Navigator.of(ctx).pop(),
+                          child: const Text('Cerrar'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoRow {
+  const _InfoRow(this.icon, this.label, this.value);
+  final IconData icon;
+  final String label;
+  final String value;
 }
 
 class _RankingsTab extends StatelessWidget {

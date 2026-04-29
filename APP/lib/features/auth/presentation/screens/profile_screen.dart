@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:app/features/auth/domain/user_model.dart';
@@ -327,11 +328,27 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
     final heightController =
         TextEditingController(text: user.heightCm.toString());
     bool hasLicense = user.hasLicense;
+    DateTime? licenseDate;
+    final dateFormat = DateFormat('dd/MM/yyyy');
 
     showDialog(
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) {
+          Future<void> pickLicenseDate() async {
+            final picked = await showDatePicker(
+              context: context,
+              initialDate: licenseDate ?? DateTime.now(),
+              firstDate: DateTime(1950),
+              lastDate: DateTime.now(),
+            );
+            if (picked != null) {
+              setState(() {
+                licenseDate = picked;
+              });
+            }
+          }
+
           return AlertDialog(
             title: const Text('Editar Perfil'),
             content: Column(
@@ -356,12 +373,32 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   value: hasLicense,
                   contentPadding: EdgeInsets.zero,
                   activeColor: AppColors.primary,
-                  onChanged: (val) {
+                  onChanged: (val) async {
                     setState(() {
                       hasLicense = val;
+                      if (!val) {
+                        licenseDate = null;
+                      }
                     });
+                    if (val) {
+                      await pickLicenseDate();
+                    }
                   },
                 ),
+                if (hasLicense)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.calendar_today_outlined,
+                        color: AppColors.primary),
+                    title: const Text('Fecha de expedición',
+                        style: TextStyle(fontSize: 14)),
+                    subtitle: Text(
+                      licenseDate != null
+                          ? dateFormat.format(licenseDate!)
+                          : 'Seleccionar fecha',
+                    ),
+                    onTap: pickLicenseDate,
+                  ),
               ],
             ),
             actions: [
@@ -374,6 +411,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   final w = double.tryParse(weightController.text);
                   final h = double.tryParse(heightController.text);
                   if (w != null && h != null) {
+                    // TODO(carnet-date): backend field not yet supported
                     ref.read(userProfileProvider.notifier).updateProfile(
                           userId: user.id,
                           weightKg: w,

@@ -1,4 +1,5 @@
 using Alcoholimetro.Domain.Entities;
+using Alcoholimetro.Domain.Enums;
 
 namespace Alcoholimetro.Domain.Repositories;
 
@@ -17,4 +18,5 @@ public interface IGroupRepository
     Task DeleteGroupAsync(Guid groupId);
     Task UpdateAsync(Group group);
     Task<UserGroup?> GetUserGroupAsync(Guid userId, Guid groupId);
+    Task UpdateUserGroupRoleAsync(Guid userId, Guid groupId, GroupRole newRole);
 }

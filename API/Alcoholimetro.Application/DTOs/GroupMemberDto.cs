@@ -4,5 +4,9 @@ public record GroupMemberDto(
     Guid UserId,
     string FirstName,
     string LastName,
-    string Role
+    string Role,
+    DateOnly? BirthDate,
+    double HeightCm,
+    double WeightKg,
+    string BiologicalSex
 );

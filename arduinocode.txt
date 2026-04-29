@@ -1,0 +1,226 @@
+// Alcoholimetro ESP32 — BLE Nordic UART Service (NUS)
+// Firmware para sensor MQ-3 con feedback en OLED.
+// La medición arranca SOLO cuando un central BLE escribe "INICIAR" en la
+// característica RX. El resultado se notifica por la característica TX.
+//
+// Service UUID:            6E400001-B5A3-F393-E0A9-E50E24DCCA9E
+// RX (Write,  app->ESP32): 6E400002-B5A3-F393-E0A9-E50E24DCCA9E
+// TX (Notify, ESP32->app): 6E400003-B5A3-F393-E0A9-E50E24DCCA9E
+
+#include <Arduino.h>
+#include <U8g2lib.h>
+#include <BLEDevice.h>
+#include <BLEServer.h>
+#include <BLEUtils.h>
+#include <BLE2902.h>
+
+// --- NUS UUIDs ---
+#define SERVICE_UUID           "6E400001-B5A3-F393-E0A9-E50E24DCCA9E"
+#define CHARACTERISTIC_UUID_RX "6E400002-B5A3-F393-E0A9-E50E24DCCA9E" // Write  (app -> ESP32)
+#define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" // Notify (ESP32 -> app)
+
+// --- Hardware ---
+const int   pinSensor = 34;   // Salida analógica del MQ-3 (ESP32 ADC1)
+const float RL        = 10.0; // Carga del MQ-3 en kOhm
+const float R0        = 10.0; // Calibración base (no había valor previo en el sketch original)
+
+// OLED 128x64 SSD1306 por I2C (mismo patrón U8G2 que el original)
+U8G2_SSD1306_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
+
+// --- BLE state ---
+BLEServer*         pServer           = nullptr;
+BLECharacteristic* pTxCharacteristic = nullptr;
+bool deviceConnected      = false;
+bool measurementRequested = false;
+bool readySent            = false;
+
+// --- BLE callbacks ---
+class MyServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* s) override {
+    deviceConnected = true;
+    Serial.println("BLE: central connected");
+  }
+  void onDisconnect(BLEServer* s) override {
+    deviceConnected = false;
+    readySent       = false;
+    Serial.println("BLE: central disconnected, restarting advertising");
+    BLEDevice::startAdvertising();
+  }
+};
+
+class MyCallbacks : public BLECharacteristicCallbacks {
+  void onWrite(BLECharacteristic* c) override {
+    std::string rxValue = c->getValue();
+    // Trim trailing newline / carriage return / whitespace
+    while (!rxValue.empty()) {
+      char back = rxValue.back();
+      if (back == '\n' || back == '\r' || back == ' ' || back == '\t') {
+        rxValue.pop_back();
+      } else {
+        break;
+      }
+    }
+    Serial.print("BLE RX: '"); Serial.print(rxValue.c_str()); Serial.println("'");
+    if (rxValue == "INICIAR") {
+      measurementRequested = true;
+    }
+  }
+};
+
+// --- Helpers de pantalla ---
+void drawIdleScreen() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  u8g2.drawStr(2, 25, "Esperando");
+  u8g2.drawStr(2, 45, "conexion...");
+  u8g2.sendBuffer();
+}
+
+void drawWaitingOrderScreen() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  u8g2.drawStr(2, 25, "Conectado.");
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  u8g2.drawStr(2, 45, "Esperando orden...");
+  u8g2.sendBuffer();
+}
+
+void drawAnalyzingScreen() {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB14_tr);
+  u8g2.drawStr(10, 40, "Analizando...");
+  u8g2.sendBuffer();
+}
+
+void drawResultScreen(float picoMaximo) {
+  u8g2.clearBuffer();
+  u8g2.setFont(u8g2_font_ncenB10_tr);
+  u8g2.drawStr(15, 15, "Resultado Final:");
+
+  u8g2.setFont(u8g2_font_ncenB24_tr);
+  u8g2.setCursor(15, 50);
+  u8g2.print(picoMaximo, 2);
+
+  u8g2.setFont(u8g2_font_ncenB08_tr);
+  u8g2.drawStr(90, 50, "mg/L");
+  u8g2.sendBuffer();
+}
+
+void notifyTx(const char* msg) {
+  if (!deviceConnected || pTxCharacteristic == nullptr) return;
+  pTxCharacteristic->setValue((uint8_t*)msg, strlen(msg));
+  pTxCharacteristic->notify();
+}
+
+// --- Setup ---
+void setup() {
+  Serial.begin(115200);
+  delay(100);
+  Serial.println("\nAlcoholimetro ESP32 - BLE NUS booting...");
+
+  // OLED
+  u8g2.begin();
+  drawIdleScreen();
+
+  // BLE
+  BLEDevice::init("Alcoholimetro");
+  pServer = BLEDevice::createServer();
+  pServer->setCallbacks(new MyServerCallbacks());
+
+  BLEService* pService = pServer->createService(SERVICE_UUID);
+
+  // RX (Write)
+  BLECharacteristic* pRxCharacteristic = pService->createCharacteristic(
+      CHARACTERISTIC_UUID_RX,
+      BLECharacteristic::PROPERTY_WRITE
+  );
+  pRxCharacteristic->setCallbacks(new MyCallbacks());
+
+  // TX (Notify)
+  pTxCharacteristic = pService->createCharacteristic(
+      CHARACTERISTIC_UUID_TX,
+      BLECharacteristic::PROPERTY_NOTIFY
+  );
+  pTxCharacteristic->addDescriptor(new BLE2902());
+
+  pService->start();
+
+  BLEAdvertising* pAdvertising = BLEDevice::getAdvertising();
+  pAdvertising->addServiceUUID(SERVICE_UUID);
+  pAdvertising->setScanResponse(true);
+  pAdvertising->setMinPreferred(0x06);
+  pAdvertising->setMinPreferred(0x12);
+  BLEDevice::startAdvertising();
+
+  Serial.println("BLE advertising as 'Alcoholimetro'");
+}
+
+// --- Loop ---
+void loop() {
+  // 1) Sin central conectado: pantalla de espera y nada más.
+  if (!deviceConnected) {
+    drawIdleScreen();
+    delay(200);
+    return;
+  }
+
+  // 2) Conectado: enviar READY una sola vez por conexión.
+  if (!readySent) {
+    notifyTx("READY\n");
+    readySent = true;
+    Serial.println("BLE TX: READY");
+  }
+
+  // 3) Conectado pero sin orden todavía.
+  if (!measurementRequested) {
+    drawWaitingOrderScreen();
+    delay(200);
+    return;
+  }
+
+  // 4) Orden recibida: consumir flag y ejecutar el test de 5s con detección de pico.
+  measurementRequested = false;
+
+  Serial.println("\n>>> INICIANDO TEST DE 5 SEGUNDOS <<<");
+  drawAnalyzingScreen();
+
+  float picoMaximo = 0.00;
+
+  for (int i = 0; i < 50; i++) {
+    int crudoTemp = analogRead(pinSensor);
+    float vTemp = (crudoTemp / 4095.0) * 3.3;
+    if (vTemp < 0.01) vTemp = 0.01;
+    float rsTemp = ((3.3 * RL) / vTemp) - RL;
+    float ratio  = rsTemp / R0;
+    float mgTemp = 0.4 * pow(ratio, -1.43);
+
+    // Filtro de ruido (igual que en el original)
+    if (mgTemp < 0.01) mgTemp = 0.00;
+
+    Serial.print("Soplando... Crudo: "); Serial.print(crudoTemp);
+    Serial.print(" | Actual: "); Serial.println(mgTemp, 2);
+
+    if (mgTemp > picoMaximo) {
+      picoMaximo = mgTemp;
+    }
+    delay(100);
+  }
+
+  Serial.print("=== FIN PRUEBA. RESULTADO: ");
+  Serial.print(picoMaximo, 2);
+  Serial.println(" mg/L ===");
+  Serial.printf("RESULT: %.2f mg/L\n", picoMaximo);
+
+  // Mostrar resultado en OLED
+  drawResultScreen(picoMaximo);
+
+  // Notificar resultado al central
+  char buf[16];
+  snprintf(buf, sizeof(buf), "%.2f\n", picoMaximo);
+  if (deviceConnected && pTxCharacteristic != nullptr) {
+    pTxCharacteristic->setValue((uint8_t*)buf, strlen(buf));
+    pTxCharacteristic->notify();
+  }
+
+  delay(5000);
+}
