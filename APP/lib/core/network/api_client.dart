@@ -6,7 +6,7 @@ import 'auth_interceptor.dart';
 
 // Base URL de la API. Override en build/run con:
 //   flutter run --dart-define=API_BASE_URL=https://mi-api.com
-// Default apunta al loopback del emulador Android (10.0.2.2 = host).
+// Default apunta al servicio cloud actual.
 
 /// Base URL for the Alcoholimetro backend.
 ///
@@ -16,7 +16,8 @@ import 'auth_interceptor.dart';
 ///   flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'https://unilobed-louie-pitifully.ngrok-free.dev',
+  defaultValue:
+      'https://alcoholimetro-api-282349243482.europe-southwest1.run.app',
 );
 
 final onUnauthorizedProvider = Provider<OnUnauthorized>((ref) {
