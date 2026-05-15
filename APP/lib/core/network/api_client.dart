@@ -16,7 +16,7 @@ import 'auth_interceptor.dart';
 ///   flutter build apk --release --dart-define=API_BASE_URL=https://api.example.com
 const String apiBaseUrl = String.fromEnvironment(
   'API_BASE_URL',
-  defaultValue: 'http://localhost:5231',
+  defaultValue: 'https://unilobed-louie-pitifully.ngrok-free.dev',
 );
 
 final onUnauthorizedProvider = Provider<OnUnauthorized>((ref) {

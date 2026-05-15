@@ -6,6 +6,11 @@ using Microsoft.AspNetCore.Authorization;
 
 namespace Alcoholimetro.Api.Controllers;
 
+public class DeviceTokenDto
+{
+    public string DeviceToken { get; set; } = string.Empty;
+}
+
 [ApiController]
 [Route("api/[controller]")] // api/users
 [Authorize]
@@ -99,10 +104,11 @@ public class UsersController : ControllerBase
         return Ok(response);
     }
     [HttpPut("device-token")]
-    public async Task<IActionResult> UpdateDeviceToken([FromBody] string deviceToken)
+    public async Task<IActionResult> UpdateDeviceToken([FromBody] DeviceTokenDto dto)
     {
+        var deviceToken = dto?.DeviceToken;
         if (string.IsNullOrWhiteSpace(deviceToken) || deviceToken.Length > 4096)
-            return BadRequest("Device token inválido.");
+            return BadRequest(new { error = "Device token inválido." });
 
         var userIdString = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
         if (!Guid.TryParse(userIdString, out Guid userId)) 

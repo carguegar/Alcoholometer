@@ -58,3 +58,5 @@ firebase-service-account*.json
 **/firebase-service-account*.json
 google-services.json
 GoogleService-Info.plist
+# Firebase Service Account
+firebase-credentials.json

@@ -35,15 +35,15 @@ class DefaultFirebaseOptions {
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: String.fromEnvironment(
       'FIREBASE_ANDROID_API_KEY',
-      defaultValue: 'TODO_FIREBASE_ANDROID_API_KEY',
+      defaultValue: 'AIzaSyCemrwYBbdA5hcB8rvjjL3-04Hf6-QXMWM',
     ),
     appId: String.fromEnvironment(
       'FIREBASE_ANDROID_APP_ID',
-      defaultValue: 'TODO_FIREBASE_ANDROID_APP_ID',
+      defaultValue: '1:354206024941:android:8d77741cd425215dc778e4',
     ),
     messagingSenderId: '354206024941',
-    projectId: 'alcoholimetro',
-    storageBucket: 'alcoholimetro.appspot.com',
+    projectId: 'alcoholimetro-1f6ab',
+    storageBucket: 'alcoholimetro-1f6ab.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(

@@ -17,6 +17,23 @@ class AuthRepository {
   final Dio _dio;
   final SecureStorageService _secureStorageService;
 
+  String _extractErrorMessage(DioException e, String fallback) {
+    if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
+      return 'Tiempo de conexión agotado. Revisa tu internet.';
+    }
+    if (e.type == DioExceptionType.connectionError) {
+      return 'Error de conexión. No se pudo conectar al servidor.';
+    }
+    final data = e.response?.data;
+    if (data is Map<String, dynamic>) {
+      if (data.containsKey('error')) return data['error'].toString();
+      if (data.containsKey('detail')) return data['detail'].toString();
+      if (data.containsKey('message')) return data['message'].toString();
+      if (data.containsKey('title')) return data['title'].toString();
+    }
+    return fallback;
+  }
+
   Future<void> login({
     required String email,
     required String password,
@@ -49,11 +66,7 @@ class AuthRepository {
         await _secureStorageService.saveUserId(userId);
       }
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error de conexión. Inténtalo de nuevo.');
+      throw Exception(_extractErrorMessage(e, 'Error de conexión al iniciar sesión. Inténtalo de nuevo.'));
     }
   }
 
@@ -83,11 +96,7 @@ class AuthRepository {
         'drivingLicenseIssueDate': drivingLicenseIssueDate,
       });
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al registrar. Inténtalo de nuevo.');
+      throw Exception(_extractErrorMessage(e, 'Error al registrar el usuario. Comprueba tus datos e inténtalo de nuevo.'));
     }
   }
 
@@ -105,11 +114,7 @@ class AuthRepository {
       if (data == null) throw Exception('Perfil vacío');
       return UserModel.fromJson(data);
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al cargar perfil');
+      throw Exception(_extractErrorMessage(e, 'Error al cargar los datos del perfil.'));
     }
   }
 
@@ -127,23 +132,15 @@ class AuthRepository {
         if (hasLicense != null) 'hasLicense': hasLicense,
       });
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al actualizar perfil');
+      throw Exception(_extractErrorMessage(e, 'Error al actualizar tu perfil. Inténtalo más tarde.'));
     }
   }
 
   Future<void> updateDeviceToken(String token) async {
     try {
-      await _dio.put<void>('/api/users/device-token', data: token);
+      await _dio.put<void>('/api/users/device-token', data: {'deviceToken': token});
     } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al actualizar device token');
+      throw Exception(_extractErrorMessage(e, 'Error interno al sincronizar notificaciones.'));
     }
   }
 

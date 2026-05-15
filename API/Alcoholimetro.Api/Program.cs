@@ -23,7 +23,22 @@ builder.Services.AddScoped<IGroupRepository, GroupRepository>();
 builder.Services.AddScoped<IAlcoholCalculatorService, AlcoholCalculatorService>();
 builder.Services.Configure<FirebaseSettings>(builder.Configuration.GetSection(FirebaseSettings.SectionName));
 builder.Services.AddHttpClient();
-builder.Services.AddScoped<IPushNotificationService, FcmHttpV1PushNotificationService>();
+
+// Use real FCM in Production, or in Development when credentials are configured.
+// Fall back to MockPushNotificationService in Development when no credentials exist.
+var firebaseCredPath = builder.Configuration["Firebase:CredentialsPath"];
+var googleAppCredEnv = Environment.GetEnvironmentVariable("GOOGLE_APPLICATION_CREDENTIALS");
+var hasFirebaseCredentials = !string.IsNullOrWhiteSpace(firebaseCredPath)
+    || !string.IsNullOrWhiteSpace(googleAppCredEnv);
+
+if (hasFirebaseCredentials || !builder.Environment.IsDevelopment())
+{
+    builder.Services.AddScoped<IPushNotificationService, FcmHttpV1PushNotificationService>();
+}
+else
+{
+    builder.Services.AddScoped<IPushNotificationService, MockPushNotificationService>();
+}
 
 builder.Services.AddScoped<CreateUserCommandHandler>();
 builder.Services.AddScoped<UpdateUserCommandHandler>();

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -19,12 +21,16 @@ class MeasurementScreen extends ConsumerStatefulWidget {
 }
 
 class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   MeasurementResultModel? _result;
+  double? _readingValue;
   String? _errorMessage;
   bool _isSubmitting = false;
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
+  late AnimationController _resultAppearController;
+  late Animation<double> _resultFadeAnimation;
+  late Animation<double> _resultScaleAnimation;
 
   @override
   void initState() {
@@ -37,6 +43,23 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
       CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
     );
 
+    _resultAppearController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _resultFadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _resultAppearController,
+        curve: Curves.easeOut,
+      ),
+    );
+    _resultScaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _resultAppearController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
     // Prompt for BLE / location permissions on entry; don't block UI.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       // ignore: discarded_futures
@@ -47,6 +70,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
   @override
   void dispose() {
     _pulseController.dispose();
+    _resultAppearController.dispose();
     super.dispose();
   }
 
@@ -90,6 +114,62 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
     );
   }
 
+  /// Check if Bluetooth is on, and if not, prompt the user to enable it.
+  /// Returns true if BT is on (or was just turned on).
+  Future<bool> _ensureBluetoothOn() async {
+    final svc = ref.read(bleServiceProvider);
+    final isOn = await svc.isBluetoothOn();
+    if (isOn) return true;
+
+    if (!mounted) return false;
+
+    // Show a dialog asking to enable Bluetooth.
+    final shouldEnable = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+        ),
+        icon: const Icon(
+          Icons.bluetooth_disabled_rounded,
+          color: AppColors.info,
+          size: 48,
+        ),
+        title: const Text('Bluetooth desactivado'),
+        content: Text(
+          !kIsWeb && Platform.isAndroid
+              ? 'Activa el Bluetooth para buscar tu alcoholímetro.'
+              : 'Activa el Bluetooth en los Ajustes del dispositivo para buscar tu alcoholímetro.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actionsAlignment: MainAxisAlignment.center,
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          if (!kIsWeb && Platform.isAndroid)
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pop(ctx, true),
+              icon: const Icon(Icons.bluetooth, size: 18),
+              label: const Text('Activar'),
+            ),
+        ],
+      ),
+    );
+
+    if (shouldEnable != true) return false;
+
+    // Try to turn on Bluetooth (Android only shows system dialog).
+    final turnedOn = await svc.requestBluetoothOn();
+    if (!turnedOn && mounted) {
+      _showSnack('No se pudo activar el Bluetooth.', error: true);
+    }
+    return turnedOn;
+  }
+
   Future<void> _openDevicePicker() async {
     final svc = ref.read(bleServiceProvider);
     final ok = await svc.requestPermissions();
@@ -100,6 +180,11 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
       );
       return;
     }
+
+    // Check if Bluetooth adapter is enabled before scanning.
+    final btOn = await _ensureBluetoothOn();
+    if (!btOn) return;
+
     if (!mounted) return;
 
     await showModalBottomSheet<void>(
@@ -125,8 +210,10 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
       _isSubmitting = true;
       _errorMessage = null;
       _result = null;
+      _readingValue = null;
     });
     _pulseController.stop();
+    _resultAppearController.reset();
 
     try {
       // 1. Location permission.
@@ -177,11 +264,18 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
       ref.invalidate(historyProvider);
 
       if (!mounted) return;
-      setState(() => _result = result);
+      setState(() {
+        _result = result;
+        _readingValue = reading;
+      });
+
+      // Animate the result appearing.
+      _resultAppearController.forward();
+
       if (result.color != TrafficLightColor.green) {
         _pulseController.repeat(reverse: true);
       }
-      _showSnack('Medición registrada: ${reading.toStringAsFixed(2)} mg/L');
+      // No snackbar needed — the result is now displayed prominently on screen.
     } catch (error) {
       if (!mounted) return;
       setState(() {
@@ -420,23 +514,21 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
   }
 
   Widget _buildTrafficLight() {
-    final color = _result != null
+    final hasResult = _result != null;
+    final color = hasResult
         ? _getTrafficColor(_result!.color)
         : AppColors.surfaceLight;
-    final icon = _result != null
-        ? _getTrafficIcon(_result!.color)
-        : Icons.traffic_rounded;
 
     return AnimatedBuilder(
       animation: _pulseAnimation,
       builder: (context, child) {
-        final scale =
-            _result != null && _result!.color != TrafficLightColor.green
+        final scale = hasResult && _result!.color != TrafficLightColor.green
             ? _pulseAnimation.value
             : 1.0;
         return Transform.scale(
           scale: scale,
-          child: Container(
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 500),
             width: 180,
             height: 180,
             decoration: BoxDecoration(
@@ -451,7 +543,48 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
                 ),
               ],
             ),
-            child: Icon(icon, size: 80, color: color),
+            child: hasResult && _readingValue != null
+                ? FadeTransition(
+                    opacity: _resultFadeAnimation,
+                    child: ScaleTransition(
+                      scale: _resultScaleAnimation,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _getTrafficIcon(_result!.color),
+                            size: 36,
+                            color: color,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _readingValue!.toStringAsFixed(2),
+                            style: TextStyle(
+                              color: color,
+                              fontSize: 36,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -1,
+                            ),
+                          ),
+                          Text(
+                            'mg/L',
+                            style: TextStyle(
+                              color: color.withValues(alpha: 0.7),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                : Icon(
+                    _isSubmitting
+                        ? Icons.hourglass_top_rounded
+                        : Icons.traffic_rounded,
+                    size: 80,
+                    color: color,
+                  ),
           ),
         );
       },
@@ -460,38 +593,41 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
 
   Widget _buildResultInfo() {
     final color = _getTrafficColor(_result!.color);
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
-      ),
-      child: Column(
-        children: [
-          Text(
-            _result!.message,
-            style: TextStyle(
-              color: color,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+    return FadeTransition(
+      opacity: _resultFadeAnimation,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: color.withValues(alpha: 0.3)),
+        ),
+        child: Column(
+          children: [
+            Text(
+              _result!.message,
+              style: TextStyle(
+                color: color,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
             ),
-          ),
-          if (_result!.estimatedTimeToGreen != null) ...[
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.timer_outlined, color: color, size: 20),
-                const SizedBox(width: 6),
-                Text(
-                  'Tiempo estimado: ${_formatDuration(_result!.estimatedTimeToGreen)}',
-                  style: TextStyle(color: color, fontSize: 15),
-                ),
-              ],
-            ),
+            if (_result!.estimatedTimeToGreen != null) ...[
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.timer_outlined, color: color, size: 20),
+                  const SizedBox(width: 6),
+                  Text(
+                    'Tiempo estimado: ${_formatDuration(_result!.estimatedTimeToGreen)}',
+                    style: TextStyle(color: color, fontSize: 15),
+                  ),
+                ],
+              ),
+            ],
           ],
-        ],
+        ),
       ),
     );
   }
@@ -517,6 +653,14 @@ class _DevicePickerSheetState extends ConsumerState<_DevicePickerSheet> {
 
   @override
   Widget build(BuildContext context) {
+    // Watch the adapter state to show a warning if BT is turned off
+    // while the picker is open.
+    final adapterAsync = ref.watch(bleAdapterStateProvider);
+    final btOff = adapterAsync.whenOrNull(
+          data: (s) => s != BluetoothAdapterState.on,
+        ) ??
+        false;
+
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -536,6 +680,47 @@ class _DevicePickerSheetState extends ConsumerState<_DevicePickerSheet> {
               ],
             ),
             const SizedBox(height: 12),
+
+            // Bluetooth off warning banner
+            if (btOff) ...[
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: AppColors.warning.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: AppColors.warning.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.bluetooth_disabled,
+                        color: AppColors.warning, size: 22),
+                    const SizedBox(width: 10),
+                    const Expanded(
+                      child: Text(
+                        'Bluetooth está desactivado.\nActívalo para buscar dispositivos.',
+                        style: TextStyle(
+                          color: AppColors.warning,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    if (!kIsWeb && Platform.isAndroid)
+                      TextButton(
+                        onPressed: () async {
+                          await ref
+                              .read(bleServiceProvider)
+                              .requestBluetoothOn();
+                        },
+                        child: const Text('Activar'),
+                      ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 320, minHeight: 80),
               child: StreamBuilder<List<BluetoothDevice>>(
@@ -552,12 +737,30 @@ class _DevicePickerSheetState extends ConsumerState<_DevicePickerSheet> {
                     );
                   }
                   if (devices.isEmpty) {
-                    return const Center(
+                    return Center(
                       child: Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Text(
-                          'Buscando alcoholímetros...',
-                          style: TextStyle(color: AppColors.textSecondary),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              btOff
+                                  ? Icons.bluetooth_disabled_rounded
+                                  : Icons.search_off_rounded,
+                              color: AppColors.textMuted,
+                              size: 40,
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              btOff
+                                  ? 'Activa el Bluetooth para buscar'
+                                  : 'No se encontraron alcoholímetros',
+                              style: const TextStyle(
+                                color: AppColors.textSecondary,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                          ],
                         ),
                       ),
                     );

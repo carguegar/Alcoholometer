@@ -327,6 +327,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
         TextEditingController(text: user.weightKg.toString());
     final heightController =
         TextEditingController(text: user.heightCm.toString());
+    // If the user already has a license, they cannot remove it.
+    final bool licenseLockedOn = user.hasLicense;
     bool hasLicense = user.hasLicense;
     DateTime? licenseDate;
     final dateFormat = DateFormat('dd/MM/yyyy');
@@ -370,20 +372,33 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 const SizedBox(height: 16),
                 SwitchListTile(
                   title: const Text('Tiene carnet de conducir', style: TextStyle(fontSize: 14)),
+                  subtitle: licenseLockedOn
+                      ? const Text(
+                          'No se puede quitar el carnet una vez registrado',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppColors.textMuted,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        )
+                      : null,
                   value: hasLicense,
                   contentPadding: EdgeInsets.zero,
                   activeColor: AppColors.primary,
-                  onChanged: (val) async {
-                    setState(() {
-                      hasLicense = val;
-                      if (!val) {
-                        licenseDate = null;
-                      }
-                    });
-                    if (val) {
-                      await pickLicenseDate();
-                    }
-                  },
+                  // Lock the switch ON if the user already had a license.
+                  onChanged: licenseLockedOn
+                      ? null
+                      : (val) async {
+                          setState(() {
+                            hasLicense = val;
+                            if (!val) {
+                              licenseDate = null;
+                            }
+                          });
+                          if (val) {
+                            await pickLicenseDate();
+                          }
+                        },
                 ),
                 if (hasLicense)
                   ListTile(

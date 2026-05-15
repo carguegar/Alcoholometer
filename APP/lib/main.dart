@@ -25,35 +25,87 @@ void main() async {
   runApp(const ProviderScope(child: AlcoholimetroApp()));
 }
 
-class AlcoholimetroApp extends ConsumerWidget {
+final GlobalKey<ScaffoldMessengerState> rootScaffoldMessengerKey = GlobalKey<ScaffoldMessengerState>();
+
+class AlcoholimetroApp extends ConsumerStatefulWidget {
   const AlcoholimetroApp({super.key});
 
-  static bool _pushStarted = false;
+  @override
+  ConsumerState<AlcoholimetroApp> createState() => _AlcoholimetroAppState();
+}
+
+class _AlcoholimetroAppState extends ConsumerState<AlcoholimetroApp> {
+  bool _pushStarted = false;
+  StreamSubscription? _fgSub;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  void initState() {
+    super.initState();
+    _fgSub = PushService.instance.foregroundMessages.listen((msg) {
+      final title = msg.notification?.title ?? 'Nueva Notificación';
+      final body = msg.notification?.body ?? '';
+      
+      rootScaffoldMessengerKey.currentState?.showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+              if (body.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(body),
+              ],
+            ],
+          ),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 6),
+          backgroundColor: AppColors.surface,
+          action: SnackBarAction(
+            label: 'Cerrar',
+            onPressed: () {
+              rootScaffoldMessengerKey.currentState?.hideCurrentSnackBar();
+            },
+          ),
+        ),
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _fgSub?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final router = ref.watch(appRouterProvider);
 
-    ref.listen<AsyncValue<AuthStatus>>(authControllerProvider, (prev, next) {
-      final status = next.asData?.value;
-      if (status == AuthStatus.authenticated && !_pushStarted) {
-        _pushStarted = true;
-        final authRepo = ref.read(authRepositoryProvider);
-        // Fire-and-forget; PushService.init has its own try/catch.
-        unawaited(
-          PushService.instance.init(
-            readUserId: () => 'me',
-            registerToken: (token) => authRepo.updateDeviceToken(token),
-          ),
-        );
-      }
-    });
+    final authState = ref.watch(authControllerProvider);
+    final status = authState.asData?.value;
+    
+    // Reset flag if we log out
+    if (status != AuthStatus.authenticated) {
+      _pushStarted = false;
+    } else if (!_pushStarted) {
+      // If authenticated and push not started, start it
+      _pushStarted = true;
+      final authRepo = ref.read(authRepositoryProvider);
+      unawaited(
+        PushService.instance.init(
+          readUserId: () => 'me',
+          registerToken: (token) => authRepo.updateDeviceToken(token),
+        ),
+      );
+    }
 
     return MaterialApp.router(
       title: 'Alcoholímetro',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,
+      scaffoldMessengerKey: rootScaffoldMessengerKey,
     );
   }
 }

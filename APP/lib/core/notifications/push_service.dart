@@ -30,13 +30,10 @@ class PushService {
     required String? Function() readUserId,
     required Future<void> Function(String token) registerToken,
   }) async {
-    if (_initialized) return;
-    _initialized = true;
-
     try {
       final messaging = FirebaseMessaging.instance;
 
-      if (!kIsWeb) {
+      if (!_initialized && !kIsWeb) {
         await messaging.requestPermission(
           alert: true,
           badge: true,
@@ -56,21 +53,24 @@ class PushService {
         }
       }
 
-      _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
-        if (readUserId() != null) {
-          try {
-            await registerToken(newToken);
-          } catch (e) {
-            debugPrint('PushService: failed to register refreshed token: $e');
+      if (!_initialized) {
+        _tokenRefreshSub = messaging.onTokenRefresh.listen((newToken) async {
+          if (readUserId() != null) {
+            try {
+              await registerToken(newToken);
+            } catch (e) {
+              debugPrint('PushService: failed to register refreshed token: $e');
+            }
           }
-        }
-      });
+        });
 
-      _onMessageSub = FirebaseMessaging.onMessage.listen((msg) {
-        _foregroundController.add(msg);
-      });
+        _onMessageSub = FirebaseMessaging.onMessage.listen((msg) {
+          _foregroundController.add(msg);
+        });
+
+        _initialized = true;
+      }
     } catch (e) {
-      _initialized = false;
       debugPrint('PushService init failed: $e');
     }
   }

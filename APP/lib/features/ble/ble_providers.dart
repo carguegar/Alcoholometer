@@ -25,6 +25,13 @@ final bleMeasurementStreamProvider = StreamProvider.autoDispose<double>((ref) {
   return svc.measurements;
 });
 
+/// Provider for the Bluetooth adapter state (on/off/etc.).
+final bleAdapterStateProvider =
+    StreamProvider.autoDispose<BluetoothAdapterState>((ref) {
+  final svc = ref.watch(bleServiceProvider);
+  return svc.adapterState;
+});
+
 @immutable
 class BleControllerState {
   const BleControllerState({
@@ -72,26 +79,36 @@ class BleControllerState {
 
 class BleController extends StateNotifier<BleControllerState> {
   BleController(this._service) : super(const BleControllerState()) {
-    _connStateSub = _service.connectionState.listen((cs) {
-      final connected = cs == BluetoothConnectionState.connected;
-      state = state.copyWith(
-        isConnected: connected,
-        isConnecting: connected ? false : state.isConnecting,
-        clearDevice: !connected && state.device == null,
-      );
-      if (!connected) {
-        state = state.copyWith(
-          isConnected: false,
-          isConnecting: false,
-        );
-      }
-    });
+    _subscribeConnectionState();
   }
 
   final BleService _service;
   StreamSubscription<BluetoothConnectionState>? _connStateSub;
 
   BleService get service => _service;
+
+  /// (Re)subscribe to the BLE service's connection state stream.
+  /// This must be called after disconnect() because the old stream
+  /// closes when `_device` is set to null.
+  void _subscribeConnectionState() {
+    _connStateSub?.cancel();
+    _connStateSub = _service.connectionState.listen((cs) {
+      final connected = cs == BluetoothConnectionState.connected;
+      if (connected) {
+        state = state.copyWith(
+          isConnected: true,
+          isConnecting: false,
+        );
+      } else {
+        // Device disconnected externally or intentionally.
+        state = state.copyWith(
+          isConnected: false,
+          isConnecting: false,
+          isMeasuring: false,
+        );
+      }
+    });
+  }
 
   Future<void> connect(BluetoothDevice device) async {
     state = state.copyWith(
@@ -101,6 +118,9 @@ class BleController extends StateNotifier<BleControllerState> {
     );
     try {
       await _service.connect(device);
+      // Re-subscribe to the device's connection state stream
+      // since connect() sets the internal _device.
+      _subscribeConnectionState();
       state = state.copyWith(
         isConnecting: false,
         isConnected: true,
@@ -118,14 +138,23 @@ class BleController extends StateNotifier<BleControllerState> {
   }
 
   Future<void> disconnect() async {
+    // Cancel old subscription before disconnecting, as disconnect
+    // will null out _device and the stream will close.
+    _connStateSub?.cancel();
+    _connStateSub = null;
+
     try {
       await _service.disconnect();
     } finally {
       state = state.copyWith(
         isConnected: false,
         isConnecting: false,
+        isMeasuring: false,
         clearDevice: true,
+        clearLastReading: true,
       );
+      // Re-subscribe so we are ready for the next connection.
+      _subscribeConnectionState();
     }
   }
 

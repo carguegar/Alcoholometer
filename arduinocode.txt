@@ -20,7 +20,7 @@
 #define CHARACTERISTIC_UUID_TX "6E400003-B5A3-F393-E0A9-E50E24DCCA9E" // Notify (ESP32 -> app)
 
 // --- Hardware ---
-const int   pinSensor = 34;   // Salida analógica del MQ-3 (ESP32 ADC1)
+const int   pinSensor = 36;   // Salida analógica del MQ-3 (ESP32 ADC1)
 const float RL        = 10.0; // Carga del MQ-3 en kOhm
 const float R0        = 10.0; // Calibración base (no había valor previo en el sketch original)
 
@@ -50,17 +50,13 @@ class MyServerCallbacks : public BLEServerCallbacks {
 
 class MyCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* c) override {
-    std::string rxValue = c->getValue();
-    // Trim trailing newline / carriage return / whitespace
-    while (!rxValue.empty()) {
-      char back = rxValue.back();
-      if (back == '\n' || back == '\r' || back == ' ' || back == '\t') {
-        rxValue.pop_back();
-      } else {
-        break;
-      }
-    }
-    Serial.print("BLE RX: '"); Serial.print(rxValue.c_str()); Serial.println("'");
+    // CORRECCIÓN: c->getValue() ahora devuelve String en el Core ESP32 v3.x
+    String rxValue = c->getValue();
+    
+    // El método trim() elimina espacios, \n, \r y tabulaciones al inicio y final
+    rxValue.trim();
+    
+    Serial.print("BLE RX: '"); Serial.print(rxValue); Serial.println("'");
     if (rxValue == "INICIAR") {
       measurementRequested = true;
     }

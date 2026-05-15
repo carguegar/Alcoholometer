@@ -2,7 +2,6 @@ using Alcoholimetro.Domain.Entities;
 using Alcoholimetro.Domain.Exceptions;
 using Alcoholimetro.Domain.Repositories;
 using Alcoholimetro.Domain.ValueObjects;
-using Alcoholimetro.Domain.Exceptions;
 using Alcoholimetro.Domain.Services;
 using Alcoholimetro.Application.Services;
 
@@ -73,15 +72,14 @@ public class RecordMeasurementCommandHandler
 
             if (command.MeasurementLevel >= threshold)
             {
-                var otherMemberIds = group.Members
-                    .Where(m => m.UserId != user.Id)
+                var targetMemberIds = group.Members
                     .Select(m => m.UserId)
                     .ToList();
 
-                if (otherMemberIds.Any())
+                if (targetMemberIds.Any())
                 {
                     await _pushNotificationService.SendAlertAsync(
-                        otherMemberIds, 
+                        targetMemberIds, 
                         "¡Alerta en tu grupo!", 
                         $"{user.FirstName} ha registrado una tasa de {command.MeasurementLevel} mg/L. ¡Asegúrate de que no conduzca!"
                     );

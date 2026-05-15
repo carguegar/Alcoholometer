@@ -30,6 +30,52 @@ class BleService {
 
   BluetoothDevice? get connectedDevice => _device;
 
+  // ── Bluetooth Adapter State ──
+
+  /// Stream of adapter state changes (on/off/turningOn/turningOff/etc.).
+  Stream<BluetoothAdapterState> get adapterState {
+    if (!isAvailable) {
+      return Stream<BluetoothAdapterState>.value(
+        BluetoothAdapterState.unavailable,
+      );
+    }
+    return FlutterBluePlus.adapterState;
+  }
+
+  /// Returns true if the Bluetooth adapter is currently ON.
+  Future<bool> isBluetoothOn() async {
+    if (!isAvailable) return false;
+    try {
+      final state = await FlutterBluePlus.adapterState.first;
+      return state == BluetoothAdapterState.on;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Attempt to turn on the Bluetooth adapter.
+  /// On Android this shows a system dialog; on iOS it opens settings prompt.
+  /// Returns true if BT is on after the request.
+  Future<bool> requestBluetoothOn() async {
+    if (!isAvailable) return false;
+    try {
+      if (Platform.isAndroid) {
+        await FlutterBluePlus.turnOn();
+      }
+      // Wait briefly for state to settle.
+      final state = await FlutterBluePlus.adapterState
+          .where((s) => s == BluetoothAdapterState.on)
+          .first
+          .timeout(const Duration(seconds: 8), onTimeout: () async {
+        final current = await FlutterBluePlus.adapterState.first;
+        return current;
+      });
+      return state == BluetoothAdapterState.on;
+    } catch (_) {
+      return false;
+    }
+  }
+
   /// Request the runtime permissions needed for BLE on Android/iOS.
   /// Returns true if all required permissions are granted (or on platforms
   /// where they don't apply). Returns false on web.
@@ -59,6 +105,16 @@ class BleService {
       return;
     }
 
+    // Always stop any previous scan to avoid stale state.
+    // This is the key fix for the reconnection bug: after disconnect,
+    // FlutterBluePlus can have leftover scan state that prevents new scans.
+    try {
+      await FlutterBluePlus.stopScan();
+    } catch (_) {}
+
+    // Small delay to let the adapter fully reset after stopping.
+    await Future<void>.delayed(const Duration(milliseconds: 300));
+
     try {
       await FlutterBluePlus.startScan(
         withServices: [Guid(nusServiceUuid)],
@@ -69,15 +125,19 @@ class BleService {
       return;
     }
 
+    // Use onScanResults instead of scanResults to get fresh results
+    // and avoid issues with cached/stale streams.
     try {
-      await for (final results in FlutterBluePlus.scanResults) {
-        final seen = <String>{};
-        final devices = <BluetoothDevice>[];
-        for (final r in results) {
-          final id = r.device.remoteId.str;
-          if (seen.add(id)) devices.add(r.device);
+      await for (final results in FlutterBluePlus.onScanResults) {
+        if (results.isNotEmpty) {
+          final seen = <String>{};
+          final devices = <BluetoothDevice>[];
+          for (final r in results) {
+            final id = r.device.remoteId.str;
+            if (seen.add(id)) devices.add(r.device);
+          }
+          yield devices;
         }
-        yield devices;
       }
     } finally {
       try {
