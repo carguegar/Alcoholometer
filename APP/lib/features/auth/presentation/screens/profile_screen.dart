@@ -177,6 +177,8 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                         color: AppColors.textSecondary,
                         fontSize: 14,
                       ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                     ),
                     const SizedBox(height: 6),
                     if (user.hasLicense)
@@ -371,50 +373,39 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                   decoration: const InputDecoration(labelText: 'Altura (cm)'),
                 ),
                 const SizedBox(height: 16),
-                SwitchListTile(
-                  title: const Text('Tiene carnet de conducir', style: TextStyle(fontSize: 14)),
-                  subtitle: licenseLockedOn
-                      ? const Text(
-                          'No se puede quitar el carnet una vez registrado',
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: AppColors.textMuted,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        )
-                      : null,
-                  value: hasLicense,
-                  contentPadding: EdgeInsets.zero,
-                  activeColor: AppColors.primary,
-                  // Lock the switch ON if the user already had a license.
-                  onChanged: licenseLockedOn
-                      ? null
-                      : (val) async {
-                          setState(() {
-                            hasLicense = val;
-                            if (!val) {
-                              licenseDate = null;
-                            }
-                          });
-                          if (val) {
-                            await pickLicenseDate();
-                          }
-                        },
-                ),
-                if (hasLicense)
-                  ListTile(
+                if (!licenseLockedOn) ...[
+                  SwitchListTile(
+                    title: const Text('Tiene carnet de conducir', style: TextStyle(fontSize: 14)),
+                    value: hasLicense,
                     contentPadding: EdgeInsets.zero,
-                    leading: const Icon(Icons.calendar_today_outlined,
-                        color: AppColors.primary),
-                    title: const Text('Fecha de expedición',
-                        style: TextStyle(fontSize: 14)),
-                    subtitle: Text(
-                      licenseDate != null
-                          ? dateFormat.format(licenseDate!)
-                          : 'Seleccionar fecha',
-                    ),
-                    onTap: pickLicenseDate,
+                    activeColor: AppColors.primary,
+                    onChanged: (val) async {
+                      setState(() {
+                        hasLicense = val;
+                        if (!val) {
+                          licenseDate = null;
+                        }
+                      });
+                      if (val) {
+                        await pickLicenseDate();
+                      }
+                    },
                   ),
+                  if (hasLicense)
+                    ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      leading: const Icon(Icons.calendar_today_outlined,
+                          color: AppColors.primary),
+                      title: const Text('Fecha de expedición',
+                          style: TextStyle(fontSize: 14)),
+                      subtitle: Text(
+                        licenseDate != null
+                            ? dateFormat.format(licenseDate!)
+                            : 'Seleccionar fecha',
+                      ),
+                      onTap: pickLicenseDate,
+                    ),
+                ],
               ],
             ),
             actions: [
@@ -520,12 +511,18 @@ class _InfoRow extends StatelessWidget {
             style: const TextStyle(color: AppColors.textMuted, fontSize: 14),
           ),
         ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AppColors.textPrimary,
-            fontWeight: FontWeight.w500,
-            fontSize: 14,
+        Flexible(
+          flex: 2,
+          child: Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w500,
+              fontSize: 14,
+            ),
+            textAlign: TextAlign.right,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
           ),
         ),
       ],

@@ -127,3 +127,35 @@ Provide a Firebase service-account JSON. **Never commit it.** Pick one:
 - The firmware advertises as `Alcoholimetro` and exposes the **Nordic UART Service (NUS)**.
 - The mobile app filters by the NUS UUID.
 - On Android, ensure both **Bluetooth** and **Location** are enabled before scanning.
+
+## 9. Production Deployment
+
+### 9.1 API (Google Cloud Run)
+
+To deploy the API to Google Cloud Run, ensure you have the Google Cloud CLI installed and authenticated.
+
+```powershell
+gcloud run deploy alcoholimetro-api --source API/Alcoholimetro.Api --region europe-southwest1 --allow-unauthenticated
+```
+Note: Adjust the region if necessary. The API base URL is generally configured to `https://alcoholimetro-api-282349243482.europe-southwest1.run.app` in `api_client.dart`.
+
+### 9.2 Web App (Firebase Hosting)
+
+To deploy the Flutter Web app to Firebase Hosting:
+
+```powershell
+cd APP
+flutter build web --release
+firebase deploy --only hosting
+```
+
+### 9.3 Android APK
+
+To build the APK for Android devices:
+
+```powershell
+cd APP
+flutter build apk --release
+```
+The generated APK will be located at `APP/build/app/outputs/flutter-apk/app-release.apk`.
+
