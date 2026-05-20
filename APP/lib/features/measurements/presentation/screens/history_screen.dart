@@ -6,6 +6,7 @@ import 'package:app/core/theme/app_theme.dart';
 import 'package:app/core/storage/secure_storage_service.dart';
 import 'package:app/features/measurements/data/measurement_repository.dart';
 import 'package:app/features/measurements/domain/measurement_models.dart';
+import 'package:app/core/network/error_handler.dart';
 
 class HistoryNotifier
     extends AutoDisposeAsyncNotifier<List<MeasurementHistoryModel>> {
@@ -141,7 +142,7 @@ class _HistoryScreenState extends ConsumerState<HistoryScreen> {
                             ),
                             const SizedBox(height: 12),
                             Text(
-                              error.toString().replaceAll('Exception: ', ''),
+                              apiErrorMessage(error),
                               style: const TextStyle(
                                 color: AppColors.textSecondary,
                               ),

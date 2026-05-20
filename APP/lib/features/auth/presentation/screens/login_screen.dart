@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:app/core/network/error_handler.dart';
 
 class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
@@ -227,9 +228,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                         const SizedBox(width: 8),
                                         Expanded(
                                           child: Text(
-                                            authState.error
-                                                .toString()
-                                                .replaceAll('Exception: ', ''),
+                                            apiErrorMessage(authState.error!),
                                             style: const TextStyle(
                                               color: AppColors.danger,
                                               fontSize: 13,

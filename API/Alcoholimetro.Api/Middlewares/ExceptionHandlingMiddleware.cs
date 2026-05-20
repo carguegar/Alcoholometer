@@ -77,7 +77,7 @@ public class ExceptionHandlingMiddleware
             Instance = context.Request.Path,
         };
 
-        if (_env.IsDevelopment())
+        if (_env.IsDevelopment() && statusCode == StatusCodes.Status500InternalServerError)
         {
             problem.Detail = exception.ToString();
         }

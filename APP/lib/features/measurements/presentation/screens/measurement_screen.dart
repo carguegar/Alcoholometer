@@ -11,6 +11,7 @@ import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/ble/ble_providers.dart';
 import 'package:app/features/measurements/data/measurement_repository.dart';
 import 'package:app/features/measurements/domain/measurement_models.dart';
+import 'package:app/core/network/error_handler.dart';
 import 'package:app/features/measurements/presentation/screens/history_screen.dart';
 
 class MeasurementScreen extends ConsumerStatefulWidget {
@@ -279,7 +280,7 @@ class _MeasurementScreenState extends ConsumerState<MeasurementScreen>
     } catch (error) {
       if (!mounted) return;
       setState(() {
-        _errorMessage = error.toString().replaceAll('Exception: ', '');
+        _errorMessage = apiErrorMessage(error);
       });
     } finally {
       if (mounted) setState(() => _isSubmitting = false);

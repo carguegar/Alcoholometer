@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/groups/presentation/controllers/groups_controller.dart';
 import 'package:app/features/groups/domain/group_models.dart';
+import 'package:app/core/network/error_handler.dart';
 
 class GroupsScreen extends ConsumerWidget {
   const GroupsScreen({super.key});
@@ -76,7 +77,7 @@ class GroupsScreen extends ConsumerWidget {
                             color: AppColors.danger, size: 48),
                         const SizedBox(height: 12),
                         Text(
-                          error.toString().replaceAll('Exception: ', ''),
+                          apiErrorMessage(error),
                           style:
                               const TextStyle(color: AppColors.textSecondary),
                           textAlign: TextAlign.center,
@@ -218,7 +219,7 @@ class GroupsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          e.toString().replaceAll('Exception: ', '')),
+                          apiErrorMessage(e)),
                       backgroundColor: AppColors.danger,
                     ),
                   );
@@ -334,7 +335,7 @@ class GroupsScreen extends ConsumerWidget {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text(
-                          e.toString().replaceAll('Exception: ', '')),
+                          apiErrorMessage(e)),
                       backgroundColor: AppColors.danger,
                     ),
                   );

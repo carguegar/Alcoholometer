@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:app/features/auth/domain/user_model.dart';
+import 'package:app/core/network/error_handler.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -92,7 +93,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
           const Icon(Icons.error_outline, color: AppColors.danger, size: 36),
           const SizedBox(height: 8),
           Text(
-            error.toString().replaceAll('Exception: ', ''),
+            apiErrorMessage(error),
             style: const TextStyle(color: AppColors.danger),
             textAlign: TextAlign.center,
           ),

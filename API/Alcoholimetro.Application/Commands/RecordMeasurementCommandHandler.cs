@@ -72,18 +72,28 @@ public class RecordMeasurementCommandHandler
 
             if (command.MeasurementLevel >= threshold)
             {
-                var targetMemberIds = group.Members
+                var otherMemberIds = group.Members
                     .Select(m => m.UserId)
+                    .Where(id => id != user.Id)
                     .ToList();
 
-                if (targetMemberIds.Any())
+                // Notification to other group members
+                if (otherMemberIds.Any())
                 {
+                    string mapsUrl = $"https://maps.google.com/?q={command.Lat.ToString(System.Globalization.CultureInfo.InvariantCulture)},{command.Lng.ToString(System.Globalization.CultureInfo.InvariantCulture)}";
                     await _pushNotificationService.SendAlertAsync(
-                        targetMemberIds, 
-                        "¡Alerta en tu grupo!", 
-                        $"{user.FirstName} ha registrado una tasa de {command.MeasurementLevel} mg/L. ¡Asegúrate de que no conduzca!"
+                        otherMemberIds, 
+                        $"¡Alerta en {group.Name}!", 
+                        $"{user.FirstName} ha registrado {command.MeasurementLevel} mg/L. Ubicación: {mapsUrl}"
                     );
                 }
+
+                // Notification to the user themselves
+                await _pushNotificationService.SendAlertAsync(
+                    new List<Guid> { user.Id },
+                    $"¡Límite superado en {group.Name}!",
+                    $"Has registrado una tasa de {command.MeasurementLevel} mg/L superando el límite del grupo. Por favor, ¡no conduzcas!"
+                );
             }
         }
 

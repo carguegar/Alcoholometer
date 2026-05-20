@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:app/core/theme/app_theme.dart';
+import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
+import 'package:app/core/network/error_handler.dart';
 import 'package:app/features/auth/data/auth_repository.dart';
 
 class RegisterScreen extends ConsumerStatefulWidget {
@@ -135,7 +137,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen>
       context.go('/login');
     } catch (error) {
       setState(() {
-        _errorMessage = error.toString().replaceAll('Exception: ', '');
+        _errorMessage = apiErrorMessage(error);
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);

@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:app/core/network/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/features/groups/domain/group_models.dart';
@@ -21,12 +22,7 @@ class GroupsRepository {
           .map((item) =>
               GroupSummaryModel.fromJson(item as Map<String, dynamic>))
           .toList();
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al cargar grupos');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al cargar grupos'));
     }
   }
 
@@ -37,12 +33,7 @@ class GroupsRepository {
       final data = response.data;
       if (data == null) throw Exception('Detalles del grupo vacíos');
       return GroupDetailsModel.fromJson(data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al cargar detalles del grupo');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al cargar detalles del grupo'));
     }
   }
 
@@ -67,12 +58,7 @@ class GroupsRepository {
       final data = response.data;
       if (data == null) throw Exception('Ranking vacío');
       return GroupRankingModel.fromJson(data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al cargar ranking');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al cargar ranking'));
     }
   }
 
@@ -90,12 +76,7 @@ class GroupsRepository {
         'groupId': data?['groupId'] as String? ?? '',
         'invitationCode': data?['invitationCode'] as String? ?? '',
       };
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al crear grupo');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al crear grupo'));
     }
   }
 
@@ -105,24 +86,14 @@ class GroupsRepository {
         '/api/groups/join',
         data: {'invitationCode': invitationCode},
       );
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al unirse al grupo');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al unirse al grupo'));
     }
   }
 
   Future<void> leaveGroup(String groupId) async {
     try {
       await _dio.delete<void>('/api/groups/$groupId/leave');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al abandonar grupo');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al abandonar grupo'));
     }
   }
 
@@ -132,36 +103,21 @@ class GroupsRepository {
         '/api/groups/$groupId/config',
         data: threshold,
       );
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al actualizar configuración');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al actualizar configuración'));
     }
   }
 
   Future<void> kickMember(String groupId, String targetUserId) async {
     try {
       await _dio.delete<void>('/api/groups/$groupId/members/$targetUserId');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al expulsar miembro');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al expulsar miembro'));
     }
   }
 
   Future<void> promoteToAdmin(String groupId, String targetUserId) async {
     try {
       await _dio.put<void>('/api/groups/$groupId/members/$targetUserId/admin');
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al ascender a administrador');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al ascender a administrador'));
     }
   }
 }

@@ -8,6 +8,7 @@ import 'package:app/core/theme/app_theme.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:app/features/groups/presentation/controllers/groups_controller.dart';
 import 'package:app/features/groups/domain/group_models.dart';
+import 'package:app/core/network/error_handler.dart';
 
 class GroupDetailsScreen extends ConsumerStatefulWidget {
   const GroupDetailsScreen({super.key, required this.groupId});
@@ -80,7 +81,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  error.toString().replaceAll('Exception: ', ''),
+                  apiErrorMessage(error),
                   style: const TextStyle(color: AppColors.textSecondary),
                   textAlign: TextAlign.center,
                 ),
@@ -516,7 +517,7 @@ class _GroupDetailsScreenState extends ConsumerState<GroupDetailsScreen>
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
                         content: Text(
-                          e.toString().replaceAll('Exception: ', ''),
+                          apiErrorMessage(e),
                         ),
                         backgroundColor: AppColors.danger,
                       ),

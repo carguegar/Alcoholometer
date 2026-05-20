@@ -4,6 +4,7 @@ import 'package:app/core/network/api_client.dart';
 import 'package:app/core/storage/secure_storage_service.dart';
 import 'package:app/core/utils/jwt_utils.dart';
 import 'package:app/features/auth/domain/user_model.dart';
+import 'package:app/core/network/error_handler.dart';
 
 final authRepositoryProvider = Provider<AuthRepository>((ref) {
   final dio = ref.watch(dioProvider);
@@ -17,22 +18,6 @@ class AuthRepository {
   final Dio _dio;
   final SecureStorageService _secureStorageService;
 
-  String _extractErrorMessage(DioException e, String fallback) {
-    if (e.type == DioExceptionType.connectionTimeout || e.type == DioExceptionType.receiveTimeout) {
-      return 'Tiempo de conexión agotado. Revisa tu internet.';
-    }
-    if (e.type == DioExceptionType.connectionError) {
-      return 'Error de conexión. No se pudo conectar al servidor.';
-    }
-    final data = e.response?.data;
-    if (data is Map<String, dynamic>) {
-      if (data.containsKey('error')) return data['error'].toString();
-      if (data.containsKey('detail')) return data['detail'].toString();
-      if (data.containsKey('message')) return data['message'].toString();
-      if (data.containsKey('title')) return data['title'].toString();
-    }
-    return fallback;
-  }
 
   Future<void> login({
     required String email,
@@ -66,7 +51,7 @@ class AuthRepository {
         await _secureStorageService.saveUserId(userId);
       }
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Error de conexión al iniciar sesión. Inténtalo de nuevo.'));
+      throw Exception(extractErrorMessage(e, 'Error de conexión al iniciar sesión. Inténtalo de nuevo.'));
     }
   }
 
@@ -96,7 +81,7 @@ class AuthRepository {
         'drivingLicenseIssueDate': drivingLicenseIssueDate,
       });
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Error al registrar el usuario. Comprueba tus datos e inténtalo de nuevo.'));
+      throw Exception(extractErrorMessage(e, 'Error al registrar el usuario. Comprueba tus datos e inténtalo de nuevo.'));
     }
   }
 
@@ -114,7 +99,7 @@ class AuthRepository {
       if (data == null) throw Exception('Perfil vacío');
       return UserModel.fromJson(data);
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Error al cargar los datos del perfil.'));
+      throw Exception(extractErrorMessage(e, 'Error al cargar los datos del perfil.'));
     }
   }
 
@@ -132,7 +117,7 @@ class AuthRepository {
         if (hasLicense != null) 'hasLicense': hasLicense,
       });
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Error al actualizar tu perfil. Inténtalo más tarde.'));
+      throw Exception(extractErrorMessage(e, 'Error al actualizar tu perfil. Inténtalo más tarde.'));
     }
   }
 
@@ -140,7 +125,7 @@ class AuthRepository {
     try {
       await _dio.put<void>('/api/users/device-token', data: {'deviceToken': token});
     } on DioException catch (e) {
-      throw Exception(_extractErrorMessage(e, 'Error interno al sincronizar notificaciones.'));
+      throw Exception(extractErrorMessage(e, 'Error interno al sincronizar notificaciones.'));
     }
   }
 

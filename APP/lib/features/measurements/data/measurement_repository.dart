@@ -1,4 +1,5 @@
 import 'package:dio/dio.dart';
+import 'package:app/core/network/error_handler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/core/network/api_client.dart';
 import 'package:app/features/measurements/domain/measurement_models.dart';
@@ -31,12 +32,7 @@ class MeasurementRepository {
       final data = response.data;
       if (data == null) throw Exception('Respuesta vacía del servidor');
       return MeasurementResultModel.fromJson(data);
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al registrar medición');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al registrar medición'));
     }
   }
 
@@ -58,12 +54,7 @@ class MeasurementRepository {
           .map((item) =>
               MeasurementHistoryModel.fromJson(item as Map<String, dynamic>))
           .toList();
-    } on DioException catch (e) {
-      final data = e.response?.data;
-      if (data is Map<String, dynamic> && data.containsKey('error')) {
-        throw Exception(data['error']);
-      }
-      throw Exception('Error al cargar historial');
+    } on DioException catch (e) {      throw Exception(extractErrorMessage(e, 'Error al cargar historial'));
     }
   }
 }
