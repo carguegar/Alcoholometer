@@ -10,6 +10,7 @@ import 'package:app/features/auth/data/auth_repository.dart';
 import 'package:app/features/auth/domain/auth_status.dart';
 import 'package:app/features/auth/presentation/controllers/auth_controller.dart';
 import 'package:app/firebase_options.dart';
+import 'package:app/core/ui/loading_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -106,6 +107,55 @@ class _AlcoholimetroAppState extends ConsumerState<AlcoholimetroApp> {
       theme: AppTheme.darkTheme,
       routerConfig: router,
       scaffoldMessengerKey: rootScaffoldMessengerKey,
+      builder: (context, child) {
+        return _GlobalLoadingWrapper(child: child ?? const SizedBox.shrink());
+      },
     );
   }
 }
+
+class _GlobalLoadingWrapper extends ConsumerWidget {
+  final Widget child;
+
+  const _GlobalLoadingWrapper({required this.child});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final loadingState = ref.watch(loadingProvider);
+
+    return Stack(
+      textDirection: TextDirection.ltr,
+      children: [
+        child,
+        if (loadingState.isLoading)
+          Container(
+            color: Colors.black.withValues(alpha: 0.6),
+            child: Center(
+              child: Material(
+                color: Colors.transparent,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const CircularProgressIndicator(),
+                    if (loadingState.message != null && loadingState.message!.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      Text(
+                        loadingState.message!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+

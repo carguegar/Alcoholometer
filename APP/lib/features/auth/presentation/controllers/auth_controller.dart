@@ -5,6 +5,7 @@ import 'package:app/features/auth/data/auth_repository.dart';
 import 'package:app/features/auth/domain/auth_status.dart';
 import 'package:app/features/auth/domain/user_model.dart';
 import 'package:app/features/groups/presentation/controllers/groups_controller.dart';
+import 'package:app/core/ui/loading_provider.dart';
 
 final authControllerProvider =
     StateNotifierProvider<AuthController, AsyncValue<AuthStatus>>((ref) {
@@ -22,7 +23,7 @@ final authControllerProvider =
 final userProfileProvider =
     StateNotifierProvider<UserProfileController, AsyncValue<UserModel?>>((ref) {
   final authRepository = ref.watch(authRepositoryProvider);
-  return UserProfileController(authRepository);
+  return UserProfileController(authRepository, ref);
 });
 
 class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
@@ -48,11 +49,14 @@ class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
 
   Future<void> login({required String email, required String password}) async {
     state = const AsyncValue.loading();
+    _ref.read(loadingProvider.notifier).show(message: "Iniciando sesión...");
     try {
       await _authRepository.login(email: email, password: password);
       state = const AsyncValue.data(AuthStatus.authenticated);
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
     }
   }
 
@@ -80,10 +84,11 @@ class AuthController extends StateNotifier<AsyncValue<AuthStatus>> {
 }
 
 class UserProfileController extends StateNotifier<AsyncValue<UserModel?>> {
-  UserProfileController(this._authRepository)
+  UserProfileController(this._authRepository, this._ref)
       : super(const AsyncValue.data(null));
 
   final AuthRepository _authRepository;
+  final Ref _ref;
 
   Future<void> loadProfile() async {
     state = const AsyncValue.loading();
@@ -101,6 +106,7 @@ class UserProfileController extends StateNotifier<AsyncValue<UserModel?>> {
     required double heightCm,
     bool? hasLicense,
   }) async {
+    _ref.read(loadingProvider.notifier).show(message: "Actualizando perfil...");
     try {
       await _authRepository.updateProfile(
         userId: userId,
@@ -111,6 +117,8 @@ class UserProfileController extends StateNotifier<AsyncValue<UserModel?>> {
       await loadProfile();
     } catch (error, stackTrace) {
       state = AsyncValue.error(error, stackTrace);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
     }
   }
 }

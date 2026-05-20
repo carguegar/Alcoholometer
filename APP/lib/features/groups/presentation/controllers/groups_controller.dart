@@ -1,21 +1,23 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/features/groups/data/groups_repository.dart';
 import 'package:app/features/groups/domain/group_models.dart';
+import 'package:app/core/ui/loading_provider.dart';
 
 final groupsControllerProvider =
     StateNotifierProvider<GroupsController, AsyncValue<List<GroupSummaryModel>>>(
         (ref) {
   final repository = ref.watch(groupsRepositoryProvider);
-  return GroupsController(repository);
+  return GroupsController(repository, ref);
 });
 
 class GroupsController
     extends StateNotifier<AsyncValue<List<GroupSummaryModel>>> {
-  GroupsController(this._repository) : super(const AsyncValue.loading()) {
+  GroupsController(this._repository, this._ref) : super(const AsyncValue.loading()) {
     loadGroups();
   }
 
   final GroupsRepository _repository;
+  final Ref _ref;
 
   Future<void> loadGroups() async {
     state = const AsyncValue.loading();
@@ -31,17 +33,27 @@ class GroupsController
     required String name,
     required String description,
   }) async {
-    final result = await _repository.createGroup(
-      name: name,
-      description: description,
-    );
-    await loadGroups();
-    return result;
+    _ref.read(loadingProvider.notifier).show(message: "Creando grupo...");
+    try {
+      final result = await _repository.createGroup(
+        name: name,
+        description: description,
+      );
+      await loadGroups();
+      return result;
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 
   Future<void> joinGroup(String invitationCode) async {
-    await _repository.joinGroup(invitationCode);
-    await loadGroups();
+    _ref.read(loadingProvider.notifier).show(message: "Uniéndose al grupo...");
+    try {
+      await _repository.joinGroup(invitationCode);
+      await loadGroups();
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 }
 
@@ -62,15 +74,16 @@ final groupDetailsControllerProvider =
         GroupDetailsController, AsyncValue<GroupDetailsState>, String>(
   (ref, groupId) {
     final repository = ref.watch(groupsRepositoryProvider);
-    return GroupDetailsController(repository)..load(groupId);
+    return GroupDetailsController(repository, ref)..load(groupId);
   },
 );
 
 class GroupDetailsController
     extends StateNotifier<AsyncValue<GroupDetailsState>> {
-  GroupDetailsController(this._repository) : super(const AsyncValue.loading());
+  GroupDetailsController(this._repository, this._ref) : super(const AsyncValue.loading());
 
   final GroupsRepository _repository;
+  final Ref _ref;
 
   Future<void> load(String groupId) async {
     state = const AsyncValue.loading();
@@ -86,21 +99,41 @@ class GroupDetailsController
   }
 
   Future<void> leaveGroup(String groupId) async {
-    await _repository.leaveGroup(groupId);
+    _ref.read(loadingProvider.notifier).show(message: "Saliendo del grupo...");
+    try {
+      await _repository.leaveGroup(groupId);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 
   Future<void> updateGroupConfig(String groupId, double threshold) async {
-    await _repository.updateGroupConfig(groupId, threshold);
-    await load(groupId);
+    _ref.read(loadingProvider.notifier).show(message: "Actualizando configuración...");
+    try {
+      await _repository.updateGroupConfig(groupId, threshold);
+      await load(groupId);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 
   Future<void> kickMember(String groupId, String targetUserId) async {
-    await _repository.kickMember(groupId, targetUserId);
-    await load(groupId);
+    _ref.read(loadingProvider.notifier).show(message: "Eliminando miembro...");
+    try {
+      await _repository.kickMember(groupId, targetUserId);
+      await load(groupId);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 
   Future<void> promoteToAdmin(String groupId, String targetUserId) async {
-    await _repository.promoteToAdmin(groupId, targetUserId);
-    await load(groupId);
+    _ref.read(loadingProvider.notifier).show(message: "Haciendo administrador...");
+    try {
+      await _repository.promoteToAdmin(groupId, targetUserId);
+      await load(groupId);
+    } finally {
+      _ref.read(loadingProvider.notifier).hide();
+    }
   }
 }
