@@ -51,7 +51,7 @@ public class AlcoholCalculatorService : IAlcoholCalculatorService
         
         return new AlcoholCalculationResult(
             Color: TrafficLightColor.Yellow,
-            Message: $"Tasa ilegal. Darías positivo. Espera al menos {(int)Math.Ceiling(timeToGreen.TotalHours)}h y {timeToGreen.Minutes}m. {precisionMode}",
+            Message: $"Tasa ilegal. Darías positivo. Espera al menos {(int)timeToGreen.TotalHours}h y {timeToGreen.Minutes}m. {precisionMode}",
             EstimatedTimeToGreen: timeToGreen
         );
     }
