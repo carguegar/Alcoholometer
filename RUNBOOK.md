@@ -4,7 +4,7 @@ Operational guide for running the API, the Flutter app, and the firmware locally
 
 ## 1. Prerequisites
 
-- .NET 8 SDK
+- .NET 10 SDK
 - Flutter 3.7+
 - ngrok (for exposing the local API over HTTPS)
 - A Postgres database (see `appsettings*.json` → `ConnectionStrings:DefaultConnection`)
