@@ -3,7 +3,7 @@
 **Sistema IoT de medición orientativa de alcohol en aire espirado: sensor MQ-3 + ESP32, app Flutter, API REST en .NET y alertas push para grupos.**
 
 [![.NET](https://img.shields.io/badge/.NET-10-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/)
-[![Flutter](https://img.shields.io/badge/Flutter-3.7%2B-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Flutter](https://img.shields.io/badge/Flutter-3.32%2B-02569B?logo=flutter&logoColor=white)](https://flutter.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)](https://supabase.com/)
 [![ESP32](https://img.shields.io/badge/ESP32-BLE-000000)](https://www.espressif.com/)
 [![Firebase](https://img.shields.io/badge/Firebase-FCM-FFCA28?logo=firebase&logoColor=black)](https://firebase.google.com/)
@@ -76,7 +76,7 @@ sus limitaciones, especialmente las del sensor y del modelo de cálculo.
 | **Estimación** | En amarillo/rojo se estima el tiempo hasta volver a la tasa legal con un modelo lineal simplificado. |
 | **Historial** | La app muestra las mediciones del usuario con paginación y código de colores. |
 | **Grupos** | Crear grupos, unirse con código de invitación, roles de admin/miembro, ranking y umbral de alerta. |
-| **Alertas** | Si una medición supera el umbral del grupo, se envía una push a los demás miembros y al propio usuario. |
+| **Alertas** | Si una medición alcanza o supera el umbral del grupo, se envía una push a los demás miembros y al propio usuario. |
 | **Autenticación** | Registro, login, JWT de acceso, refresh tokens y cierre de sesión. |
 | **Multiplataforma** | Android/iOS para medir por BLE; web para consultar historial, grupos y perfil. |
 | **Emergencia** | Acceso rápido al 112 desde el panel principal en móvil. |
@@ -161,12 +161,12 @@ API REST central del sistema. Sigue **Clean Architecture** con **CQRS** y
 
 Incluye autenticación JWT con refresh tokens, gestión de usuarios, mediciones
 con geolocalización, grupos colaborativos, ranking, configuración de umbrales y
-notificaciones push. La documentación detallada —endpoints principales, modelos,
+notificaciones push. La documentación detallada —endpoints, modelos,
 seguridad y setup— está en **[API/README.md](API/README.md)**.
 
 ### App Flutter (`APP/`)
 
-Aplicación Flutter 3.7+ organizada por funcionalidades:
+Aplicación Flutter 3.32+ organizada por funcionalidades:
 
 - **Auth**: login, registro, perfil y cierre de sesión.
 - **Home**: panel de control responsive con accesos rápidos y botón de emergencia.
@@ -212,7 +212,7 @@ directamente a la API.
 | Autenticación | JWT Bearer (HMAC-SHA256), refresh tokens, BCrypt |
 | Notificaciones | Firebase Cloud Messaging HTTP v1 |
 | Documentación API | OpenAPI + Swagger UI |
-| App | Flutter 3.7+, Dart 3.7+, Riverpod, go_router, Dio |
+| App | Flutter 3.32+, Dart 3.8+, Riverpod, go_router, Dio |
 | App: almacenamiento | flutter_secure_storage |
 | App: BLE y sensores | flutter_blue_plus, geolocator, permission_handler |
 | App: push | firebase_core, firebase_messaging |
@@ -259,7 +259,7 @@ Alcoholometer/
 ### Requisitos
 
 - **.NET 10 SDK**.
-- **Flutter 3.7+** (Dart 3.7+) y un emulador o dispositivo.
+- **Flutter 3.32+** (Dart 3.8+) y un emulador o dispositivo.
 - **PostgreSQL** local o un proyecto de **Supabase**.
 - **Arduino IDE 2.x** con soporte para ESP32 (solo si vas a montar el hardware).
 - **ngrok** (opcional, para exponer la API local a un móvil físico).
@@ -404,15 +404,18 @@ rate limiting ni bloqueo por intentos fallidos. Son mejoras pendientes.
   miembros y abandonar el grupo.
 - El administrador puede **ascender a otro miembro**, **expulsar miembros** y
   **cambiar el umbral de alerta**.
-- Si el administrador abandona el grupo, el rol se transfiere al miembro más
-  antiguo; si no queda nadie, el grupo se elimina.
+- Si abandona un administrador y no queda ningún otro, el rol se transfiere al
+  miembro más antiguo; si no queda nadie, el grupo se elimina.
 - El **ranking** muestra la medición más alta de cada miembro, ordenada de mayor
   a menor; la API permite filtrar por rango de fechas.
-- Cuando una medición supera el umbral del grupo, la API envía una **push FCM** a
-  los demás miembros y al propio usuario, con un enlace a Google Maps.
+- Cuando una medición alcanza o supera el umbral del grupo, la API envía una
+  **push FCM** a los demás miembros (con la ubicación en el cuerpo, como enlace a
+  Google Maps) y al propio usuario.
 - En Development se puede usar un servicio mock de notificaciones si se deja
-  `Firebase:CredentialsPath` vacío y no se define `GOOGLE_APPLICATION_CREDENTIALS`.
-  Si se configura una ruta, se usa FCM real.
+  `Firebase:CredentialsPath` vacío y no se define `GOOGLE_APPLICATION_CREDENTIALS`;
+  `appsettings.json` trae una ruta por defecto, así que hay que vaciarla. Si se
+  configura una ruta, se usa FCM real y, si el archivo no existe, se desactivan
+  los envíos.
 
 ---
 
@@ -451,6 +454,10 @@ flutter build apk --release
 ```
 
 El APK se genera en `APP/build/app/outputs/flutter-apk/app-release.apk`.
+
+> La configuración actual firma el release con la clave de debug. Sirve para
+> probar, pero no para publicar en Google Play; configura un keystore de release
+> antes de distribuir.
 
 El procedimiento completo —ngrok, CORS, Firebase, firmware, BLE y despliegue—
 está en **[RUNBOOK.md](RUNBOOK.md)**.
@@ -526,8 +533,8 @@ Mejoras posibles:
 
 | Documento | Contenido |
 |---|---|
-| [API/README.md](API/README.md) | Arquitectura del backend, stack, seguridad, setup, migraciones, endpoints principales, modelos y flujo de autenticación. |
-| [APP/README.md](APP/README.md) | Configuración de la URL de la API y ejecución de la app Flutter. |
+| [API/README.md](API/README.md) | Referencia del backend: arquitectura, stack, seguridad, setup, configuración, migraciones, endpoints completos, modelos, FCM y tests. |
+| [APP/README.md](APP/README.md) | Referencia de la app Flutter: arquitectura, configuración, BLE, Firebase, rutas, tests y builds. |
 | [RUNBOOK.md](RUNBOOK.md) | Guía operativa: API local, ngrok, CORS, Firebase, firmware, BLE y despliegue. |
 | [arduinocode.txt](arduinocode.txt) | Sketch completo del firmware ESP32. |
 | [API/Alcoholimetro.slnx](API/Alcoholimetro.slnx) | Solución .NET con los proyectos y tests. |
